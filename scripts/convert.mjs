@@ -12,7 +12,12 @@ const features = rows.map((r) => ({
   geometry: { type: "Point", coordinates: [+r.lng, +r.lat] },
   properties: {
     id: r.id,
-    name: { zh: r.name_zh, ja: r.name_ja, ko: r.name_ko },
+    name: {
+      zh: r.name_zh || "",
+      ja: r.name_ja || "",
+      ko: r.name_ko || "",
+      eng: r.name_eng || "",
+    },
     address: r.address,
     tel: r.tel,
     categories: (r.categories || "").split(",").filter(Boolean),
@@ -30,6 +35,7 @@ const features = rows.map((r) => ({
     lng: r.lng,
     hours: JSON.parse(r.hours_json || '{"default":[]}'),
     city: r.city,
+    image_url: r.image_url || "",
   },
 }));
 
@@ -46,3 +52,15 @@ fs.writeFileSync(
   JSON.stringify({ type: "FeatureCollection", features }),
 );
 console.log(`✅  ${features.length} venues exported`);
+
+import { createClient } from "@supabase/supabase-js";
+const sb = createClient(process.env.SB_URL, process.env.SERVICE_KEY);
+
+await sb.from("venues").upsert(
+  json.features.map((f) => ({
+    id: f.properties.id,
+    ...f.properties,
+    lat: f.geometry.coordinates[1],
+    lng: f.geometry.coordinates[0],
+  })),
+);
