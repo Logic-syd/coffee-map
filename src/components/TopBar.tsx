@@ -1,30 +1,35 @@
-'use client';
-import { Bars3Icon, MapIcon } from '@heroicons/react/24/solid';
+"use client";
+import { useState } from "react";
+import DrawerMenu from "./DrawerMenu";
 
-type Props = {
-  onToggleDrawer: () => void;
-  onToggleView: () => void;
-  isMap: boolean;
-};
+export default function TopBar() {
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-export default function TopBar({ onToggleDrawer, onToggleView, isMap }: Props) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 sticky top-0 z-20 bg-white">
-      <button onClick={onToggleDrawer}>
-        <Bars3Icon className="w-7 h-7 text-indigo-700" />
-      </button>
-
-      <input
-        type="text"
-        placeholder="Search"
-        className="flex-1 rounded-full bg-gray-100 px-4 py-1 text-sm focus:outline-none"
-      />
-
-      <button onClick={onToggleView}>
-        <MapIcon
-          className={`w-7 h-7 ${isMap ? 'text-indigo-700' : 'text-gray-500'}`}
-        />
-      </button>
-    </div>
+    <>
+      <header className="fixed top-0 left-0 right-0 z-20 bg-white border-b">
+        <div className="px-4 h-14 flex items-center">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="p-2 hover:bg-gray-100 rounded-full"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
+          </button>
+        </div>
+      </header>
+      <DrawerMenu open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+    </>
   );
 }
