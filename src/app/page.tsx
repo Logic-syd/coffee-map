@@ -125,7 +125,7 @@ export default function HomePage() {
     return new Date(utc + 8 * 3600000);
   }
 
-  // 地图按钮点击逻辑，集成定位
+  // 地图按钮点击逻辑，集成定位和降级体验
   function handleMapClick() {
     if (locStatus === "idle") {
       requestLocation();
@@ -155,7 +155,10 @@ export default function HomePage() {
     <>
       {mapMode ? (
         <>
-          <MapView venues={venues} userCoords={userCoords} />
+          <MapView
+            venues={venues}
+            userCoords={locStatus === "granted" ? userCoords : undefined}
+          />
           <button
             onClick={() => setMapMode(false)}
             className="fixed top-4 right-4 z-20 bg-white rounded-full shadow px-4 py-2 text-gray-700"
@@ -169,6 +172,7 @@ export default function HomePage() {
             search={search}
             setSearch={setSearch}
             onMapClick={handleMapClick}
+            mapButtonDisabled={locStatus === "denied"}
           />
           <div
             className="sticky top-14 z-20 bg-yellow-100 flex flex-nowrap overflow-x-auto whitespace-nowrap px-4 py-1 scrollbar-hide"
