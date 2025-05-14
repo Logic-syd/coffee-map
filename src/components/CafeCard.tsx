@@ -11,9 +11,10 @@ type CafeCardProps = {
     // 其它你需要的字段
     [key: string]: any;
   };
+  distanceKm?: number;
 };
 
-export default function CafeCard({ v }: CafeCardProps) {
+export default function CafeCard({ v, distanceKm }: CafeCardProps) {
   return (
     <div className="rounded-2xl overflow-hidden shadow-sm bg-white">
       <div className="relative w-full" style={{ aspectRatio: "4/3" }}>
@@ -36,9 +37,12 @@ export default function CafeCard({ v }: CafeCardProps) {
           <h3 className="font-semibold text-lg text-white">
             {v.displayName || v.name_zh}
           </h3>
-          <p className="text-sm text-gray-200">
+          <p className="text-sm text-gray-500">
             <span className="mr-1">📍</span>
             {v.address}
+            {typeof distanceKm === "number" && (
+              <> • {distanceKm.toFixed(1)} km</>
+            )}
           </p>
         </div>
       </div>
