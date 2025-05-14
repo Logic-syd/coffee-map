@@ -137,6 +137,11 @@ export default function HomePage() {
     }
   }
 
+  // 判断用户是否在中国大陆
+  function isInChina({ lat, lng }: { lat: number; lng: number }) {
+    return lng >= 73.5 && lng <= 135.1 && lat >= 18 && lat <= 53.6;
+  }
+
   useEffect(() => {
     supabase
       .from("venues")
@@ -157,7 +162,11 @@ export default function HomePage() {
         <>
           <MapView
             venues={venues}
-            userCoords={locStatus === "granted" ? userCoords : undefined}
+            userCoords={
+              locStatus === "granted" && userCoords && isInChina(userCoords)
+                ? userCoords
+                : undefined
+            }
           />
           <button
             onClick={() => setMapMode(false)}

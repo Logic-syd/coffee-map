@@ -64,8 +64,8 @@ export default function MapView({
       <Map
         mapLib={import("maplibre-gl")} // ← 告诉它走 MapLibre
         initialViewState={{
-          longitude: userCoords?.lng ?? 121.47,
-          latitude: userCoords?.lat ?? 31.23,
+          longitude: userCoords?.lng ?? 121.445,
+          latitude: userCoords?.lat ?? 31.229,
           zoom: 12,
         }}
         style={{ width: "100%", height: "100%" }}
