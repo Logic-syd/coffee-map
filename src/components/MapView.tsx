@@ -28,11 +28,12 @@ function getCircleGeoJSON(
   }
   coords.push(coords[0]);
   return {
-    type: "Feature",
+    type: "Feature" as const,
     geometry: {
-      type: "Polygon",
+      type: "Polygon" as const,
       coordinates: [coords],
     },
+    properties: {},
   };
 }
 
@@ -43,7 +44,6 @@ export default function MapView({
   venues: { id: string; lat: number; lng: number; name_zh?: string }[];
   userCoords?: { lat: number; lng: number };
 }) {
-  const hasUser = !!userCoords;
   const filteredVenues = useMemo(() => {
     if (!userCoords) return venues;
     return venues.filter(

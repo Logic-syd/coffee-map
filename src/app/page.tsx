@@ -9,6 +9,8 @@ import FilterSheet from "@/components/FilterSheet";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { calcDistanceKm } from "@/utils/geo";
 import MapView from "@/components/MapView";
+import { useFavoritesStore } from "@/store/favorites";
+import VenueDetail from "@/components/VenueDetail";
 
 export default function HomePage() {
   const [venues, setVenues] = useState<any[]>([]);
@@ -26,6 +28,8 @@ export default function HomePage() {
     coords: userCoords,
     request: requestLocation,
   } = useUserLocation();
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const favorites = useFavoritesStore((s) => s.favorites);
 
   // 用useMemo计算venuesWithDistance，避免死循环
   const venuesWithDistance = useMemo(() => {
@@ -58,7 +62,8 @@ export default function HomePage() {
           (v["name_eng"] &&
             v["name_eng"].toLowerCase().includes(search.toLowerCase()));
         if (!searchMatched) return false;
-
+        // 收藏筛选
+        if (showFavoritesOnly && !favorites.includes(v.id)) return false;
         // 遍历所有选中的筛选项，全部满足才展示
         for (const key in selectedFilters) {
           if (!selectedFilters[key]) continue;
@@ -99,7 +104,15 @@ export default function HomePage() {
         return true;
       }),
     );
-  }, [venuesWithDistance, search, selectedFilters, userCoords, locStatus]);
+  }, [
+    venuesWithDistance,
+    search,
+    selectedFilters,
+    userCoords,
+    locStatus,
+    showFavoritesOnly,
+    favorites,
+  ]);
 
   function isOpenNow(hours: any, now: Date) {
     if (!hours?.default) return false;
@@ -127,14 +140,9 @@ export default function HomePage() {
 
   // 地图按钮点击逻辑，集成定位和降级体验
   function handleMapClick() {
-    if (locStatus === "idle") {
-      requestLocation();
-      setMapMode(true);
-    } else if (locStatus === "denied") {
-      alert("Location disabled");
-    } else {
-      setMapMode(true);
-    }
+    // 每次点击都同步请求定位，兼容 iOS WebView/Hybrid
+    requestLocation();
+    setMapMode(true);
   }
 
   // 判断用户是否在中国大陆
@@ -181,7 +189,6 @@ export default function HomePage() {
             search={search}
             setSearch={setSearch}
             onMapClick={handleMapClick}
-            mapButtonDisabled={locStatus === "denied"}
           />
           <div
             className="sticky top-14 z-20 bg-yellow-100 flex flex-nowrap overflow-x-auto whitespace-nowrap px-4 py-1 scrollbar-hide"
@@ -197,13 +204,29 @@ export default function HomePage() {
               }
             `}</style>
             <button
+              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-medium mr-2 ${showFavoritesOnly ? "bg-pink-100 text-pink-600" : "bg-gray-100 text-gray-700"}`}
+              onClick={() => setShowFavoritesOnly((v) => !v)}
+              aria-label="只看收藏"
+            >
+              <svg
+                className="w-5 h-5"
+                fill={showFavoritesOnly ? "#ec4899" : "none"}
+                stroke={showFavoritesOnly ? "#ec4899" : "currentColor"}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3.172 5.172a4 4 0 015.656 0L12 8.343l3.172-3.171a4 4 0 115.656 5.656L12 21.657l-8.828-8.829a4 4 0 010-5.656z"
+                />
+              </svg>
+            </button>
+            <button
               className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 font-medium mr-2"
               onClick={() => setFilterOpen(true)}
             >
               <FunnelIcon className="w-5 h-5" /> Filters
-            </button>
-            <button className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 font-medium mr-2">
-              <HeartIcon className="w-5 h-5" />
             </button>
             <button
               className={`inline-flex px-3 py-1 rounded-full font-medium mr-2 ${selectedFilters.open ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}
@@ -255,75 +278,5 @@ export default function HomePage() {
         </>
       )}
     </>
-  );
-}
-
-// 详情内容组件，直接用你原来 VenuePage 的内容
-function VenueDetail({ v }: { v: any }) {
-  if (!v) return null;
-  return (
-    <main className="p-6 pb-32 space-y-6">
-      {v.image_url && (
-        <img
-          src={v.image_url}
-          alt={v.displayName || v.name_zh || ""}
-          className="object-cover w-full rounded-xl mb-4"
-          style={{ aspectRatio: "4/3" }}
-        />
-      )}
-      <header className="rounded-lg bg-indigo-700 text-white p-6">
-        <h1 className="text-2xl font-bold">{v.name_zh}</h1>
-        <p className="mt-1 text-sm opacity-80">📍 {v.address}</p>
-      </header>
-
-      {/* Opening hours 简单展示 */}
-      {v.hours?.default?.length > 0 && (
-        <section>
-          <h2 className="font-semibold mb-2">Opening hours</h2>
-          <ul className="text-sm text-gray-700 space-y-1">
-            {v.hours.default.map(([day, open, close], index) => (
-              <li key={index}>
-                <span className="inline-block w-16">{day || "未知"}</span>
-                {open && close ? `${open} – ${close}` : "Closed"}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* Serving */}
-      {v.serving?.length > 0 && (
-        <section>
-          <h2 className="font-semibold mb-2">Serving</h2>
-          <div className="flex flex-wrap gap-2">
-            {v.serving.map((tag) => (
-              <span
-                key={tag}
-                className="px-3 py-1 bg-gray-100 rounded-full text-sm"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Services */}
-      {v.services?.length > 0 && (
-        <section>
-          <h2 className="font-semibold mb-2">Services</h2>
-          <div className="flex flex-wrap gap-2">
-            {v.services.map((tag) => (
-              <span
-                key={tag}
-                className="px-3 py-1 bg-gray-100 rounded-full text-sm"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-    </main>
   );
 }
