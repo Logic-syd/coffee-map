@@ -30,7 +30,7 @@ export interface Venue {
   distanceKm?: number;
   isOpenNow?: boolean;
   created_at?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export default function HomePage() {
@@ -183,13 +183,24 @@ export default function HomePage() {
         if (error) console.error(error);
         else
           setVenues(
-            (data || []).map((v: any) => ({
-              ...v,
+            (data || []).map((v: Record<string, unknown>) => ({
+              id: v.id as string,
+              address: v.address as string,
+              lat: v.lat as number,
+              lng: v.lng as number,
+              image_url: v.image_url as string | undefined,
+              serving: v.serving as string[] | undefined,
+              services: v.services as string[] | undefined,
+              tags: v.tags as string[] | undefined,
+              hours: v.hours as
+                | { default?: [string, string, string][] }
+                | undefined,
+              created_at: v.created_at as string | undefined,
               name: {
-                zh: v.name_zh,
-                en: v.name_eng,
-                ja: v.name_ja,
-                ko: v.name_ko,
+                zh: v.name_zh as string | undefined,
+                en: v.name_eng as string | undefined,
+                ja: v.name_ja as string | undefined,
+                ko: v.name_ko as string | undefined,
               },
             })),
           );

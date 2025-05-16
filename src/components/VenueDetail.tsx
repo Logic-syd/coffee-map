@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FavoriteButton from "@/components/FavoriteButton";
 import { LinkIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import { FaInstagram, FaFacebook, FaTwitter } from "react-icons/fa";
@@ -48,7 +48,7 @@ interface Venue {
     default?: [string, string, string][];
   };
   image_url?: string;
-  [key: string]: any; // 允许其他属性
+  [key: string]: unknown; // Use unknown instead of any
 }
 
 export default function VenueDetail({
@@ -66,13 +66,18 @@ export default function VenueDetail({
   }>(null);
   const [copied, setCopied] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [lang, setLang] = useState("zh");
+  const showJa = lang.startsWith("ja");
+  const showKo = lang.startsWith("ko");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setLang(navigator.language || "zh");
+    }
+  }, []);
 
   if (!v) return null;
 
-  // 获取系统语言
-  const lang = typeof window !== "undefined" ? navigator.language : "zh";
-  const showJa = lang.startsWith("ja");
-  const showKo = lang.startsWith("ko");
   // 取多语言名
   const nameZh = v.name?.zh;
   const nameEn = v.name?.en;
@@ -220,8 +225,13 @@ export default function VenueDetail({
       )}
       {/* 店名与多语言名 */}
       <div className={v.image_url ? "-mt-12 px-6" : "px-6 pt-6"}>
-        <div className="text-2xl font-bold text-inkblack text-left">
-          {nameZh}
+        <div className="flex items-center justify-between text-2xl font-bold text-inkblack">
+          <span>{nameZh}</span>
+          <FavoriteButton
+            venueId={v.id}
+            size={28}
+            className="border-2 border-pinkaccent text-pinkaccent bg-white hover:bg-pinkaccent hover:text-white transition-colors shadow-card rounded-full p-1"
+          />
         </div>
         {nameEn && (
           <div className="text-base text-gray-500 mt-1 text-left">{nameEn}</div>
@@ -369,7 +379,7 @@ export default function VenueDetail({
       {/* 底部按钮区：主题色保持一致 */}
       <div className="fixed left-0 right-0 bottom-0 z-30 bg-white p-4 flex flex-col gap-3 border-t">
         <button
-          className="w-full py-3 rounded-full bg-pinkaccent text-white font-bold text-lg shadow hover:bg-pink-500 transition"
+          className="w-full py-3 rounded-full bg-pinkaccent text-white font-bold text-lg shadow hover:bg-pink-600 active:bg-pink-700 transition"
           onClick={() => setNavOpen(true)}
         >
           Navigate
@@ -400,7 +410,7 @@ export default function VenueDetail({
                   href={opt.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-2 rounded bg-indigo-600 text-white text-center font-semibold hover:bg-indigo-700 transition"
+                  className="w-full py-2 rounded bg-pinkaccent text-white text-center font-semibold hover:bg-pink-500 transition"
                   onClick={() => setNavOpen(false)}
                 >
                   {opt.name}

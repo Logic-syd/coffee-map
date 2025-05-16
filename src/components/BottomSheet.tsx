@@ -6,24 +6,57 @@ type Props = {
   children: React.ReactNode;
 };
 
-// 假设 TopBar 高度 56px，停在 28px (top-7)
-const TOP_OFFSET = 28; // px
-
 export default function BottomSheet({ open, onClose, children }: Props) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState(open);
   const [animate, setAnimate] = useState(false);
+  const [contentReady, setContentReady] = useState(false);
+  const contentRef = useRef(children);
+  const previousOpenRef = useRef(open);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 控制动画显示/隐藏
+  // Handle opening and closing
   useEffect(() => {
-    if (open) {
-      setShow(true);
-      setTimeout(() => setAnimate(true), 10); // 触发动画
-    } else if (show) {
-      setAnimate(false);
-      setTimeout(() => setShow(false), 500); // 0.5s
+    // Clear any existing timeouts
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-  }, [open]);
+
+    if (open) {
+      // Opening flow
+      setShow(true);
+
+      // Give time for content to render
+      timeoutRef.current = setTimeout(() => {
+        setContentReady(true);
+        // Start animation after content is ready
+        requestAnimationFrame(() => {
+          setAnimate(true);
+        });
+      }, 50);
+    } else if (show) {
+      // Closing flow
+      setAnimate(false);
+
+      // Wait for animation to end before hiding
+      timeoutRef.current = setTimeout(() => {
+        setShow(false);
+        setContentReady(false);
+      }, 500);
+    }
+
+    // Update refs
+    contentRef.current = children;
+    previousOpenRef.current = open;
+
+    // Cleanup function
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [open, children, show]);
 
   // Close on click outside
   useEffect(() => {
@@ -70,13 +103,27 @@ export default function BottomSheet({ open, onClose, children }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        className={`absolute inset-0 bg-black/40 transition-opacity duration-500 ${
+          animate ? "opacity-100" : "opacity-0"
+        } pointer-events-auto`}
+        onClick={onClose}
+      />
       <div
         ref={sheetRef}
-        className={`fixed left-1/2 -translate-x-1/2 ${animate ? `top-[${TOP_OFFSET}px]` : "top-full"} mx-auto bg-white rounded-t-2xl shadow-lg w-full max-w-md md:max-w-xl lg:max-w-2xl h-[calc(100vh-28px)] max-h-[95vh] overflow-y-auto transition-transform duration-500`}
-        style={{ touchAction: "pan-y" }}
+        className={`fixed inset-x-0 mx-auto bg-white rounded-t-2xl shadow-lg w-full max-w-md md:max-w-xl lg:max-w-2xl h-[calc(100vh-120px)] max-h-[95vh] overflow-hidden transition-transform duration-500 ease-out transform ${
+          animate ? "translate-y-0" : "translate-y-full"
+        } pointer-events-auto`}
+        style={{
+          touchAction: "pan-y",
+          willChange: "transform",
+          transformOrigin: "bottom",
+          top: "120px",
+        }}
       >
-        {children}
+        <div className="h-full overflow-y-auto overscroll-contain">
+          {contentReady ? children : null}
+        </div>
       </div>
     </div>
   );

@@ -5,9 +5,11 @@ import { HeartIcon as HeartSolid } from "@heroicons/react/24/solid";
 export default function FavoriteButton({
   venueId,
   size = 28,
+  className = "",
 }: {
   venueId: string;
   size?: number;
+  className?: string;
 }) {
   const isFavorite = useFavoritesStore((s) => s.isFavorite(venueId));
   const addFavorite = useFavoritesStore((s) => s.addFavorite);
@@ -24,7 +26,7 @@ export default function FavoriteButton({
           addFavorite(venueId);
         }
       }}
-      className="p-1 rounded-full transition"
+      className={`p-1 rounded-full transition ${className}`}
     >
       {isFavorite ? (
         <HeartSolid
