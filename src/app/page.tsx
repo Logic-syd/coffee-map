@@ -11,15 +11,12 @@ import MapView from "@/components/MapView";
 import { useFavoritesStore } from "@/store/favorites";
 import VenueDetail from "@/components/VenueDetail";
 import FilterBar from "@/components/FilterBar";
+import Loading from "./loading";
 
 // Define venue type
-interface Venue {
+export interface Venue {
   id: string;
-  name: string;
-  name_zh?: string;
-  name_ja?: string;
-  name_ko?: string;
-  name_eng?: string;
+  name: { zh?: string; en?: string; ja?: string; ko?: string };
   address: string;
   lat: number;
   lng: number;
@@ -32,12 +29,12 @@ interface Venue {
   tags?: string[];
   distanceKm?: number;
   isOpenNow?: boolean;
-  created_at: string;
+  created_at?: string;
+  [key: string]: any;
 }
 
 export default function HomePage() {
   const [venues, setVenues] = useState<Venue[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [search, setSearch] = useState("");
   const [mapMode, setMapMode] = useState(false);
@@ -52,6 +49,7 @@ export default function HomePage() {
   } = useUserLocation();
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const favorites = useFavoritesStore((s) => s.favorites);
+  const [loading, setLoading] = useState(true);
 
   // 用useMemo计算venuesWithDistance，避免死循环
   const venuesWithDistance = useMemo(() => {
@@ -75,18 +73,11 @@ export default function HomePage() {
         // 搜索支持多语言
         const searchMatched =
           !search ||
-          (v.name_zh &&
-            v.name_zh.toLowerCase().includes(search.toLowerCase())) ||
-          (v.name_ja &&
-            v.name_ja.toLowerCase().includes(search.toLowerCase())) ||
-          (v["name_ko"] &&
-            v["name_ko"].toLowerCase().includes(search.toLowerCase())) ||
-          (v["name_eng"] &&
-            v["name_eng"].toLowerCase().includes(search.toLowerCase()));
+          Object.values(v.name || {}).some((n) =>
+            n?.toLowerCase().includes(search.toLowerCase()),
+          );
         if (!searchMatched) return false;
-        // 收藏筛选
         if (showFavoritesOnly && !favorites.includes(v.id)) return false;
-        // 遍历所有选中的筛选项，全部满足才展示
         for (const key in selectedFilters) {
           if (!selectedFilters[key]) continue;
           if (key === "open") {
@@ -190,12 +181,23 @@ export default function HomePage() {
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
         if (error) console.error(error);
-        else setVenues(data || []);
+        else
+          setVenues(
+            (data || []).map((v: any) => ({
+              ...v,
+              name: {
+                zh: v.name_zh,
+                en: v.name_eng,
+                ja: v.name_ja,
+                ko: v.name_ko,
+              },
+            })),
+          );
         setLoading(false);
       });
   }, []);
 
-  if (loading) return <p className="p-4">Loading…</p>;
+  if (loading) return <Loading />;
 
   return (
     <>

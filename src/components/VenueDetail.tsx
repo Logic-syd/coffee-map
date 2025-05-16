@@ -30,8 +30,7 @@ import { BsCupHot } from "react-icons/bs";
 // 定义venue类型
 interface Venue {
   id: string;
-  name?: { zh?: string };
-  name_zh?: string;
+  name?: { zh?: string; en?: string; ja?: string; ko?: string };
   address: string;
   lat: number;
   lng: number;
@@ -95,10 +94,12 @@ export default function VenueDetail({ v }: { v: Venue }) {
       icon: <PhoneIcon className="w-6 h-6" />,
       url: `tel:${v.contacts.tel}`,
     },
-  ].filter(Boolean);
+  ].filter((c): c is { key: string; icon: React.ReactElement; url: string } =>
+    Boolean(c),
+  );
 
   // 导航弹窗选项
-  const mapOptions = [
+  const mapOptions: { name: string; url: string }[] = [
     {
       name: "Apple Maps",
       url: `http://maps.apple.com/?daddr=${encodeURIComponent(v.address)}`,
@@ -109,15 +110,15 @@ export default function VenueDetail({ v }: { v: Venue }) {
     },
     {
       name: "高德地图",
-      url: `https://uri.amap.com/marker?position=${v.lng},${v.lat}&name=${encodeURIComponent(v.name_zh || v.name?.zh || "")}`,
+      url: `https://uri.amap.com/marker?position=${v.lng},${v.lat}&name=${encodeURIComponent(v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || "")}`,
     },
     {
       name: "Kakao Map",
-      url: `https://map.kakao.com/link/map/${encodeURIComponent(v.name_zh || v.name?.zh || "")},${v.lat},${v.lng}`,
+      url: `https://map.kakao.com/link/map/${encodeURIComponent(v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || "")},${v.lat},${v.lng}`,
     },
     {
       name: "Naver Map",
-      url: `https://map.naver.com/v5/search/${encodeURIComponent(v.name_zh || v.name?.zh || "")}?c=${v.lng},${v.lat},16,0,0,0,dh`,
+      url: `https://map.naver.com/v5/search/${encodeURIComponent(v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || "")}?c=${v.lng},${v.lat},16,0,0,0,dh`,
     },
   ];
 
@@ -150,11 +151,13 @@ export default function VenueDetail({ v }: { v: Venue }) {
 
   // 分享逻辑
   const handleShare = async () => {
-    const shareText = `${v.name_zh || v.name?.zh}\n${v.address}`;
+    const displayName =
+      v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || "";
+    const shareText = `${displayName}\n${v.address}`;
     if (navigator.share) {
       try {
         await navigator.share({
-          title: v.name_zh || v.name?.zh,
+          title: displayName,
           text: shareText,
         });
       } catch {}
@@ -173,12 +176,20 @@ export default function VenueDetail({ v }: { v: Venue }) {
           <div>
             <div
               className="text-2xl font-bold truncate cursor-pointer max-w-xs"
-              title={v.name_zh || v.name?.zh}
+              title={v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || ""}
               onClick={() =>
-                setPopup({ type: "name", value: v.name_zh || v.name?.zh })
+                setPopup({
+                  type: "name",
+                  value:
+                    v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || "",
+                })
               }
             >
-              {v.name_zh || v.name?.zh}
+              {v.name?.zh ||
+                v.name?.en ||
+                v.name?.ja ||
+                v.name?.ko ||
+                "No Name"}
             </div>
             <div
               className="mt-1 text-sm opacity-80 truncate cursor-pointer max-w-xs"
@@ -227,11 +238,11 @@ export default function VenueDetail({ v }: { v: Venue }) {
       )}
 
       {/* Opening hours 简单展示 */}
-      {v.hours?.default?.length > 0 && (
+      {Array.isArray(v.hours?.default) && v.hours.default.length > 0 && (
         <section>
           <h2 className="font-semibold mb-2">Opening hours</h2>
           <ul className="text-sm text-gray-700 space-y-1">
-            {v.hours.default.map(([day, open, close]: any[], index: number) => (
+            {v.hours.default.map(([day, open, close], index: number) => (
               <li key={index}>
                 <span className="inline-block w-16">{day || "未知"}</span>
                 {open && close ? `${open} – ${close}` : "Closed"}
@@ -259,7 +270,7 @@ export default function VenueDetail({ v }: { v: Venue }) {
       )}
 
       {/* Serving */}
-      {v.serving?.length > 0 && (
+      {Array.isArray(v.serving) && v.serving.length > 0 && (
         <section>
           <h2 className="font-semibold mb-2">Serving</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -277,7 +288,7 @@ export default function VenueDetail({ v }: { v: Venue }) {
       )}
 
       {/* Services */}
-      {v.services?.length > 0 && (
+      {Array.isArray(v.services) && v.services.length > 0 && (
         <section>
           <h2 className="font-semibold mb-2">Services</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

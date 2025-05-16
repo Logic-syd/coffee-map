@@ -5,7 +5,7 @@ import { useState } from "react";
 export type CafeCardProps = {
   v: {
     id: string;
-    name: string;
+    name: { zh?: string; en?: string; ja?: string; ko?: string };
     address: string;
     image_url?: string;
     distanceKm?: number;
@@ -50,7 +50,7 @@ export default function CafeCard({
         {v.image_url ? (
           <img
             src={v.image_url}
-            alt={v.name}
+            alt={v.name.zh || v.name.en || v.name.ja || v.name.ko || "No Name"}
             className="object-cover w-full h-full"
           />
         ) : (
@@ -72,7 +72,7 @@ export default function CafeCard({
       </div>
       <div className="p-4">
         <h3 className="text-lg font-semibold text-inkblack line-clamp-1">
-          {v.name}
+          {v.name.zh || v.name.en || v.name.ja || v.name.ko || "No Name"}
         </h3>
         <p className="text-sm text-graytext line-clamp-1">📍 {v.address}</p>
         <p className="text-xs text-graytext mt-1">
