@@ -1,9 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-    "baseUrl": ".", 
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
@@ -19,6 +18,8 @@
         "name": "next"
       }
     ],
+    "sourceMap": true,
+    "inlineSources": true,
     "paths": {
       "@/*": ["./src/*"]
     }

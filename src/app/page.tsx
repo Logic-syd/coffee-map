@@ -4,25 +4,47 @@ import CafeCard from "@/components/CafeCard";
 import BottomSheet from "@/components/BottomSheet";
 import TopBar from "@/components/TopBar";
 import { supabase } from "@/lib/supabase";
-import { FunnelIcon, HeartIcon } from "@heroicons/react/24/outline";
 import FilterSheet from "@/components/FilterSheet";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { calcDistanceKm } from "@/utils/geo";
 import MapView from "@/components/MapView";
 import { useFavoritesStore } from "@/store/favorites";
 import VenueDetail from "@/components/VenueDetail";
+import FilterBar from "@/components/FilterBar";
+
+// Define venue type
+interface Venue {
+  id: string;
+  name: string;
+  name_zh?: string;
+  name_ja?: string;
+  name_ko?: string;
+  name_eng?: string;
+  address: string;
+  lat: number;
+  lng: number;
+  image_url?: string;
+  hours?: {
+    default?: [string, string, string][];
+  };
+  serving?: string[];
+  services?: string[];
+  tags?: string[];
+  distanceKm?: number;
+  isOpenNow?: boolean;
+  created_at: string;
+}
 
 export default function HomePage() {
-  const [venues, setVenues] = useState<any[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedVenue, setSelectedVenue] = useState<any | null>(null);
+  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [search, setSearch] = useState("");
   const [mapMode, setMapMode] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<
     Record<string, boolean>
   >({});
-  const lang = "zh"; // 可根据用户设置动态切换
   const {
     status: locStatus,
     coords: userCoords,
@@ -114,13 +136,14 @@ export default function HomePage() {
     favorites,
   ]);
 
-  function isOpenNow(hours: any, now: Date) {
+  function isOpenNow(hours: Venue["hours"], now: Date) {
     if (!hours?.default) return false;
     const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const day = dayMap[now.getDay()];
-    const today = hours.default.find(([d]: any[]) => d === day);
+    const today = hours.default.find(([d]) => d === day);
     if (!today) return false;
-    const [_, open, close] = today;
+    // Destructure array and ignore first element
+    const [, open, close] = today;
     if (!open || !close) return false;
     const [oh, om] = open.split(":").map(Number);
     const [ch, cm] = close.split(":").map(Number);
@@ -150,6 +173,16 @@ export default function HomePage() {
     return lng >= 73.5 && lng <= 135.1 && lat >= 18 && lat <= 53.6;
   }
 
+  // Handle favorite toggle
+  const handleFavoriteToggle = (id: string) => {
+    const store = useFavoritesStore.getState();
+    if (store.isFavorite(id)) {
+      store.removeFavorite(id);
+    } else {
+      store.addFavorite(id);
+    }
+  };
+
   useEffect(() => {
     supabase
       .from("venues")
@@ -167,99 +200,78 @@ export default function HomePage() {
   return (
     <>
       {mapMode ? (
-        <>
-          <MapView
-            venues={venues}
-            userCoords={
-              locStatus === "granted" && userCoords && isInChina(userCoords)
-                ? userCoords
-                : undefined
-            }
+        <div className="flex flex-col h-screen">
+          <TopBar
+            search={search}
+            setSearch={setSearch}
+            onMapClick={() => setMapMode(false)}
+            isMapMode={true}
           />
-          <button
-            onClick={() => setMapMode(false)}
-            className="fixed top-4 right-4 z-20 bg-white rounded-full shadow px-4 py-2 text-gray-700"
-          >
-            关闭
-          </button>
-        </>
+          <div className="sticky top-14 z-10">
+            <FilterBar
+              selected={Object.keys(selectedFilters).filter(
+                (k) => selectedFilters[k],
+              )}
+              setSelected={(arr) => {
+                // 只保留原有 selectedFilters 结构
+                const next: Record<string, boolean> = {};
+                arr.forEach((k) => (next[k] = true));
+                setSelectedFilters(next);
+              }}
+              onHeartClick={() => setShowFavoritesOnly((v) => !v)}
+              isFavoriteActive={showFavoritesOnly}
+              onFilterClick={() => setFilterOpen(true)}
+            />
+          </div>
+          <div className="flex-1 relative">
+            <MapView
+              venues={venues}
+              userCoords={
+                locStatus === "granted" && userCoords && isInChina(userCoords)
+                  ? userCoords
+                  : undefined
+              }
+              className="absolute inset-0 z-0"
+            />
+          </div>
+        </div>
       ) : (
         <>
           <TopBar
             search={search}
             setSearch={setSearch}
             onMapClick={handleMapClick}
+            isMapMode={false}
           />
-          <div
-            className="sticky top-14 z-20 bg-yellow-100 flex flex-nowrap overflow-x-auto whitespace-nowrap px-4 py-1 scrollbar-hide"
-            style={{
-              WebkitOverflowScrolling: "touch",
-              msOverflowStyle: "none",
-              scrollbarWidth: "none",
+          <FilterBar
+            selected={Object.keys(selectedFilters).filter(
+              (k) => selectedFilters[k],
+            )}
+            setSelected={(arr) => {
+              // 只保留原有 selectedFilters 结构
+              const next: Record<string, boolean> = {};
+              arr.forEach((k) => (next[k] = true));
+              setSelectedFilters(next);
             }}
-          >
-            <style jsx>{`
-              .scrollbar-hide::-webkit-scrollbar {
-                display: none;
-              }
-            `}</style>
-            <button
-              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-medium mr-2 ${showFavoritesOnly ? "bg-pink-100 text-pink-600" : "bg-gray-100 text-gray-700"}`}
-              onClick={() => setShowFavoritesOnly((v) => !v)}
-              aria-label="只看收藏"
-            >
-              <svg
-                className="w-5 h-5"
-                fill={showFavoritesOnly ? "#ec4899" : "none"}
-                stroke={showFavoritesOnly ? "#ec4899" : "currentColor"}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3.172 5.172a4 4 0 015.656 0L12 8.343l3.172-3.171a4 4 0 115.656 5.656L12 21.657l-8.828-8.829a4 4 0 010-5.656z"
-                />
-              </svg>
-            </button>
-            <button
-              className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 font-medium mr-2"
-              onClick={() => setFilterOpen(true)}
-            >
-              <FunnelIcon className="w-5 h-5" /> Filters
-            </button>
-            <button
-              className={`inline-flex px-3 py-1 rounded-full font-medium mr-2 ${selectedFilters.open ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}
-              onClick={() =>
-                setSelectedFilters((f) => ({ ...f, open: !f.open }))
-              }
-            >
-              Open Cafes
-            </button>
-            <button
-              className={`inline-flex px-3 py-1 rounded-full font-medium mr-2 ${selectedFilters.breakfast ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}
-              onClick={() =>
-                setSelectedFilters((f) => ({ ...f, breakfast: !f.breakfast }))
-              }
-            >
-              Breakfast
-            </button>
-            <button
-              className={`inline-flex px-3 py-1 rounded-full font-medium ${selectedFilters.vegan_options ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}
-              onClick={() =>
-                setSelectedFilters((f) => ({
-                  ...f,
-                  vegan_options: !f.vegan_options,
-                }))
-              }
-            >
-              Vegan Options
-            </button>
-          </div>
+            onHeartClick={() => setShowFavoritesOnly((v) => !v)}
+            isFavoriteActive={showFavoritesOnly}
+            onFilterClick={() => setFilterOpen(true)}
+          />
           <main className="p-4 space-y-4 pb-24 pt-[20px]">
             {clientFilteredVenues.map((v) => (
               <div key={v.id} onClick={() => setSelectedVenue(v)}>
-                <CafeCard v={v} distanceKm={v.distanceKm} />
+                <CafeCard
+                  v={{
+                    id: v.id,
+                    name: v.name,
+                    address: v.address,
+                    image_url: v.image_url,
+                    isOpenNow: isOpenNow(v.hours, getBeijingNow()),
+                  }}
+                  distanceKm={v.distanceKm}
+                  isFav={favorites.includes(v.id)}
+                  onToggleFav={handleFavoriteToggle}
+                />
               </div>
             ))}
           </main>

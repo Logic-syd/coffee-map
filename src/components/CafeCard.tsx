@@ -1,52 +1,86 @@
-import { Venue } from "@/data/sample-venues";
+import { motion, useAnimation } from "framer-motion";
+import { Heart } from "lucide-react";
+import { useState } from "react";
 
-type CafeCardProps = {
+export type CafeCardProps = {
   v: {
     id: string;
-    name_zh?: string;
-    address?: string;
-    displayName?: string;
+    name: string;
+    address: string;
     image_url?: string;
-    distance?: number;
-    // 其它你需要的字段
-    [key: string]: any;
+    distanceKm?: number;
+    isOpenNow?: boolean;
   };
   distanceKm?: number;
+  isFav?: boolean;
+  onToggleFav?: (id: string) => void;
 };
 
-export default function CafeCard({ v, distanceKm }: CafeCardProps) {
+export default function CafeCard({
+  v,
+  distanceKm,
+  isFav = false,
+  onToggleFav = () => {},
+}: CafeCardProps) {
+  const [pulse, setPulse] = useState(false);
+  const controls = useAnimation();
+
+  const handleHeart = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click when heart is clicked
+    setPulse(true);
+    await controls.start({
+      scale: [1, 1.2, 1],
+      transition: { duration: 0.35 },
+    });
+    setPulse(false);
+    onToggleFav(v.id);
+  };
+
+  // Use the prop distanceKm if provided, otherwise fallback to v.distanceKm
+  const displayDistance = distanceKm !== undefined ? distanceKm : v.distanceKm;
+
   return (
-    <div className="rounded-2xl overflow-hidden shadow-sm bg-white">
-      <div className="relative w-full" style={{ aspectRatio: "4/3" }}>
+    <motion.div
+      className="bg-white rounded-2xl shadow-card overflow-hidden transition-transform cursor-pointer"
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: "spring", stiffness: 250, damping: 20 }}
+    >
+      <div className="relative w-full h-44">
         {v.image_url ? (
           <img
             src={v.image_url}
-            alt={v.displayName || v.name_zh || ""}
+            alt={v.name}
             className="object-cover w-full h-full"
-            style={{ aspectRatio: "4/3" }}
           />
         ) : (
-          <div
-            className="w-full h-full bg-gray-200 flex items-center justify-center"
-            style={{ aspectRatio: "4/3" }}
-          >
-            {/* 可选：放个默认icon或文字 */}
-          </div>
+          <div className="w-full h-full bg-pinkcream flex items-center justify-center" />
         )}
-        <div className="absolute left-0 bottom-0 w-full p-4 bg-gradient-to-t from-black/70 to-transparent">
-          <h3 className="font-semibold text-lg text-white">
-            {v.displayName || v.name_zh}
-          </h3>
-          <p className="text-sm text-gray-500">
-            <span className="mr-1">📍</span>
-            {v.address}
-            {typeof distanceKm === "number" && (
-              <> • {distanceKm.toFixed(1)} km</>
-            )}
-          </p>
-        </div>
+        <motion.button
+          className="absolute top-2 right-2 bg-white/80 rounded-full p-2 shadow-card"
+          onClick={handleHeart}
+          animate={pulse ? controls : undefined}
+          aria-label="Favorite"
+        >
+          <Heart
+            size={22}
+            className={
+              isFav ? "text-pinkaccent fill-pinkaccent" : "text-graytext"
+            }
+          />
+        </motion.button>
       </div>
-      {/* 你可以在这里加其它内容，比如服务标签等 */}
-    </div>
+      <div className="p-4">
+        <h3 className="text-lg font-semibold text-inkblack line-clamp-1">
+          {v.name}
+        </h3>
+        <p className="text-sm text-graytext line-clamp-1">📍 {v.address}</p>
+        <p className="text-xs text-graytext mt-1">
+          {typeof displayDistance === "number" &&
+            `• ${displayDistance.toFixed(1)} km`}{" "}
+          {v.isOpenNow && "• ⏰ Open"}
+        </p>
+      </div>
+    </motion.div>
   );
 }

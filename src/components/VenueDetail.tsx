@@ -10,13 +10,11 @@ import {
   FaLeaf,
   FaDog,
   FaChild,
-  FaChair,
   FaWheelchair,
   FaMugHot,
   FaIceCream,
   FaUtensils,
   FaGlassWhiskey,
-  FaSeedling,
   FaCloud,
 } from "react-icons/fa";
 import { MdFreeBreakfast, MdOutdoorGrill } from "react-icons/md";
@@ -29,7 +27,30 @@ import {
 } from "react-icons/gi";
 import { BsCupHot } from "react-icons/bs";
 
-export default function VenueDetail({ v }: { v: any }) {
+// 定义venue类型
+interface Venue {
+  id: string;
+  name?: { zh?: string };
+  name_zh?: string;
+  address: string;
+  lat: number;
+  lng: number;
+  contacts?: {
+    site?: string;
+    fb?: string;
+    ig?: string;
+    twitter?: string;
+    tel?: string;
+  };
+  serving?: string[];
+  services?: string[];
+  hours?: {
+    default?: [string, string, string][];
+  };
+  [key: string]: any; // 允许其他属性
+}
+
+export default function VenueDetail({ v }: { v: Venue }) {
   const [popup, setPopup] = useState<null | {
     type: "name" | "address";
     value: string;
@@ -101,7 +122,7 @@ export default function VenueDetail({ v }: { v: any }) {
   ];
 
   // 标签到图标的映射
-  const servingIcons: Record<string, JSX.Element> = {
+  const servingIcons: Record<string, React.ReactNode> = {
     espresso: <FaCoffee size={28} />,
     "filter coffee": <GiCoffeeCup size={28} />,
     breakfast: <MdFreeBreakfast size={28} />,
@@ -117,7 +138,7 @@ export default function VenueDetail({ v }: { v: any }) {
     croissant: <GiCroissant size={28} />,
     dessert: <FaIceCream size={28} />,
   };
-  const serviceIcons: Record<string, JSX.Element> = {
+  const serviceIcons: Record<string, React.ReactNode> = {
     "free wifi": <FaWifi size={28} />,
     "laptop friendly": <FaLaptop size={28} />,
     "credit cards": <FaCreditCard size={28} />,

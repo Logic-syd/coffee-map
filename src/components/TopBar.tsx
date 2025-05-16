@@ -1,58 +1,55 @@
 "use client";
 import { useState } from "react";
 import DrawerMenu from "./DrawerMenu";
-import { MapIcon } from "@heroicons/react/24/outline";
-import { useSearch } from "@/lib/useSearch";
+import { Menu, MapPin, X } from "lucide-react";
+import { tapSpring } from "@/lib/motion";
+import { motion } from "framer-motion";
 
 export default function TopBar({
   search,
   setSearch,
   onMapClick,
+  isMapMode,
 }: {
   search: string;
   setSearch: (v: string) => void;
-  onMapClick: () => void;
+  onMapClick?: () => void;
+  isMapMode?: boolean;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-20 bg-white border-b">
-        <div className="flex items-center gap-2 px-4 h-14">
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="p-2 hover:bg-gray-100 rounded-full"
-            aria-label="Open menu"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </button>
+      <header className="sticky top-0 z-30 h-14 bg-pinkcream rounded-b-3xl shadow-card flex items-center px-4 gap-2">
+        <motion.button
+          onClick={() => setDrawerOpen(true)}
+          className="p-2 hover:bg-pinkaccent/30 rounded-full transition"
+          aria-label="Open menu"
+          whileTap={tapSpring}
+        >
+          <Menu size={24} className="text-inkblack" />
+        </motion.button>
+        <div className="flex-1 flex items-center">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search"
-            className="flex-1 rounded-full bg-gray-100 px-4 py-2 text-base focus:outline-none mx-2"
+            placeholder="Search cafes, tags..."
+            className="w-full rounded-full bg-white shadow-input px-4 py-2 text-sm placeholder-graytext text-inkblack focus:outline-none"
           />
-          <button
-            className="p-2 rounded-full bg-white shadow"
-            onClick={onMapClick}
-            aria-label="Map"
-          >
-            <MapIcon className="w-7 h-7 text-indigo-700" />
-          </button>
         </div>
+        <motion.button
+          className={`ml-2 p-2 rounded-full ${isMapMode ? "bg-white hover:bg-white/80" : "hover:bg-yolkyellow/60"} transition`}
+          aria-label={isMapMode ? "Back to list" : "View map"}
+          onClick={onMapClick}
+          whileTap={tapSpring}
+        >
+          {isMapMode ? (
+            <X size={20} className="text-gray-700" />
+          ) : (
+            <MapPin size={22} className="text-mintice" />
+          )}
+        </motion.button>
       </header>
       <DrawerMenu open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </>
