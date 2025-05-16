@@ -281,7 +281,13 @@ export default function HomePage() {
             open={!!selectedVenue}
             onClose={() => setSelectedVenue(null)}
           >
-            {selectedVenue && <VenueDetail v={selectedVenue} />}
+            {selectedVenue && (
+              <VenueDetail
+                v={selectedVenue}
+                onClose={() => setSelectedVenue(null)}
+                distanceKm={selectedVenue.distanceKm}
+              />
+            )}
           </BottomSheet>
           <FilterSheet
             open={filterOpen}

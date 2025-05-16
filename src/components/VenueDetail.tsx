@@ -26,6 +26,7 @@ import {
   GiCoffeeBeans,
 } from "react-icons/gi";
 import { BsCupHot } from "react-icons/bs";
+import { ChevronDown } from "lucide-react";
 
 // 定义venue类型
 interface Venue {
@@ -46,10 +47,19 @@ interface Venue {
   hours?: {
     default?: [string, string, string][];
   };
+  image_url?: string;
   [key: string]: any; // 允许其他属性
 }
 
-export default function VenueDetail({ v }: { v: Venue }) {
+export default function VenueDetail({
+  v,
+  onClose,
+  distanceKm,
+}: {
+  v: Venue;
+  onClose?: () => void;
+  distanceKm?: number;
+}) {
   const [popup, setPopup] = useState<null | {
     type: "name" | "address";
     value: string;
@@ -58,6 +68,16 @@ export default function VenueDetail({ v }: { v: Venue }) {
   const [navOpen, setNavOpen] = useState(false);
 
   if (!v) return null;
+
+  // 获取系统语言
+  const lang = typeof window !== "undefined" ? navigator.language : "zh";
+  const showJa = lang.startsWith("ja");
+  const showKo = lang.startsWith("ko");
+  // 取多语言名
+  const nameZh = v.name?.zh;
+  const nameEn = v.name?.en;
+  const nameJa = v.name?.ja;
+  const nameKo = v.name?.ko;
 
   // 联系方式图标配置
   const contactIcons = [
@@ -169,39 +189,66 @@ export default function VenueDetail({ v }: { v: Venue }) {
   };
 
   return (
-    <main className="p-6 pb-32 space-y-6">
-      {/* 头部：店名 & 地址 */}
-      <header className="rounded-lg bg-indigo-700 text-white p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <div
-              className="text-2xl font-bold truncate cursor-pointer max-w-xs"
-              title={v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || ""}
-              onClick={() =>
-                setPopup({
-                  type: "name",
-                  value:
-                    v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || "",
-                })
-              }
+    <main className="pb-32 space-y-6">
+      {/* 顶部图片+下滑按钮+渐变（仅有图片时显示） */}
+      {v.image_url && (
+        <div className="relative w-full">
+          <img
+            src={v.image_url}
+            alt={nameZh || nameEn || nameJa || nameKo || "No Name"}
+            className="w-full h-56 object-cover rounded-b-3xl"
+          />
+          {/* 左上角下滑按钮（白底黑icon，显眼） */}
+          {onClose && (
+            <button
+              className="absolute top-4 left-4 z-10 bg-white rounded-full p-2 shadow-card border border-black/10"
+              onClick={onClose}
+              aria-label="Close"
             >
-              {v.name?.zh ||
-                v.name?.en ||
-                v.name?.ja ||
-                v.name?.ko ||
-                "No Name"}
-            </div>
-            <div
-              className="mt-1 text-sm opacity-80 truncate cursor-pointer max-w-xs"
-              title={v.address}
-              onClick={() => setPopup({ type: "address", value: v.address })}
-            >
-              📍 {v.address}
-            </div>
-          </div>
-          <FavoriteButton venueId={v.id} />
+              <ChevronDown className="w-6 h-6 text-black" />
+            </button>
+          )}
+          {/* 图片底部渐变 */}
+          <div
+            className="absolute left-0 right-0 bottom-0 h-24 rounded-b-3xl pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(to bottom, rgba(255,255,255,0) 0%, #ffe4ec 100%)",
+            }}
+          />
         </div>
-      </header>
+      )}
+      {/* 店名与多语言名 */}
+      <div className={v.image_url ? "-mt-12 px-6" : "px-6 pt-6"}>
+        <div className="text-2xl font-bold text-inkblack text-left">
+          {nameZh}
+        </div>
+        {nameEn && (
+          <div className="text-base text-gray-500 mt-1 text-left">{nameEn}</div>
+        )}
+        {showJa && nameJa && (
+          <div className="text-base text-gray-500 mt-1 text-left">{nameJa}</div>
+        )}
+        {showKo && nameKo && (
+          <div className="text-base text-gray-500 mt-1 text-left">{nameKo}</div>
+        )}
+        {/* 距离与地址 */}
+        <div className="flex items-center gap-2 mt-3 text-left">
+          {typeof distanceKm === "number" && (
+            <span className="text-sm text-inkblack font-medium">
+              {distanceKm.toFixed(1)} km
+            </span>
+          )}
+          <span
+            className="text-sm text-gray-700 truncate cursor-pointer"
+            style={{ maxWidth: "70vw" }}
+            title={v.address}
+            onClick={() => setPopup({ type: "address", value: v.address })}
+          >
+            {v.address}
+          </span>
+        </div>
+      </div>
 
       {/* 弹窗显示完整内容和复制按钮 */}
       {popup && (
@@ -239,8 +286,10 @@ export default function VenueDetail({ v }: { v: Venue }) {
 
       {/* Opening hours 简单展示 */}
       {Array.isArray(v.hours?.default) && v.hours.default.length > 0 && (
-        <section>
-          <h2 className="font-semibold mb-2">Opening hours</h2>
+        <section className="px-6 mt-6">
+          <h2 className="font-semibold mb-2 text-inkblack text-left">
+            Opening hours
+          </h2>
           <ul className="text-sm text-gray-700 space-y-1">
             {v.hours.default.map(([day, open, close], index: number) => (
               <li key={index}>
@@ -254,7 +303,7 @@ export default function VenueDetail({ v }: { v: Venue }) {
 
       {/* 联系方式图标区 */}
       {contactIcons.length > 0 && (
-        <div className="flex gap-4 my-4">
+        <div className="flex gap-4 my-4 px-6">
           {contactIcons.map((c) => (
             <a
               key={c.key}
@@ -271,16 +320,22 @@ export default function VenueDetail({ v }: { v: Venue }) {
 
       {/* Serving */}
       {Array.isArray(v.serving) && v.serving.length > 0 && (
-        <section>
-          <h2 className="font-semibold mb-2">Serving</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <section className="mt-6 px-6">
+          <h2 className="font-semibold mb-2 text-inkblack text-left">
+            Serving
+          </h2>
+          <div className="grid grid-cols-3 gap-2">
             {v.serving.map((tag: string) => (
               <div
                 key={tag}
-                className="flex flex-col items-center p-3 rounded-lg bg-gray-50"
+                className="flex flex-col items-center justify-center p-2 rounded-lg bg-gray-50"
               >
-                {servingIcons[tag.toLowerCase()] || <FaCoffee size={28} />}
-                <span className="mt-2 text-sm text-center">{tag}</span>
+                <span>
+                  {servingIcons[tag.toLowerCase()] || <FaCoffee size={24} />}
+                </span>
+                <span className="mt-1 text-xs text-center break-words">
+                  {tag}
+                </span>
               </div>
             ))}
           </div>
@@ -289,32 +344,38 @@ export default function VenueDetail({ v }: { v: Venue }) {
 
       {/* Services */}
       {Array.isArray(v.services) && v.services.length > 0 && (
-        <section>
-          <h2 className="font-semibold mb-2">Services</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <section className="mt-6 px-6">
+          <h2 className="font-semibold mb-2 text-inkblack text-left">
+            Services
+          </h2>
+          <div className="grid grid-cols-3 gap-2">
             {v.services.map((tag: string) => (
               <div
                 key={tag}
-                className="flex flex-col items-center p-3 rounded-lg bg-gray-50"
+                className="flex flex-col items-center justify-center p-2 rounded-lg bg-gray-50"
               >
-                {serviceIcons[tag.toLowerCase()] || <FaCoffee size={28} />}
-                <span className="mt-2 text-sm text-center">{tag}</span>
+                <span>
+                  {serviceIcons[tag.toLowerCase()] || <FaCoffee size={24} />}
+                </span>
+                <span className="mt-1 text-xs text-center break-words">
+                  {tag}
+                </span>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* 底部按钮区 */}
+      {/* 底部按钮区：主题色保持一致 */}
       <div className="fixed left-0 right-0 bottom-0 z-30 bg-white p-4 flex flex-col gap-3 border-t">
         <button
-          className="w-full py-3 rounded-full bg-indigo-700 text-white font-bold text-lg shadow hover:bg-indigo-800 transition"
+          className="w-full py-3 rounded-full bg-pinkaccent text-white font-bold text-lg shadow hover:bg-pink-500 transition"
           onClick={() => setNavOpen(true)}
         >
           Navigate
         </button>
         <button
-          className="w-full py-3 rounded-full border-2 border-indigo-700 text-indigo-700 font-bold text-lg hover:bg-indigo-50 transition"
+          className="w-full py-3 rounded-full border-2 border-pinkaccent text-pinkaccent font-bold text-lg hover:bg-pink-50 transition"
           onClick={handleShare}
         >
           Share

@@ -76,7 +76,6 @@ export default function BottomSheet({ open, onClose, children }: Props) {
         className={`fixed left-1/2 -translate-x-1/2 ${animate ? `top-[${TOP_OFFSET}px]` : "top-full"} mx-auto bg-white rounded-t-2xl shadow-lg w-full max-w-md md:max-w-xl lg:max-w-2xl h-[calc(100vh-28px)] max-h-[95vh] overflow-y-auto transition-transform duration-500`}
         style={{ touchAction: "pan-y" }}
       >
-        <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto my-2" />
         {children}
       </div>
     </div>

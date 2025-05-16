@@ -72,12 +72,22 @@ export default function CafeCard({
       </div>
       <div className="p-4">
         <h3 className="text-lg font-semibold text-inkblack line-clamp-1">
-          {v.name.zh || v.name.en || v.name.ja || v.name.ko || "No Name"}
+          {v.name.zh}
+          {v.name.en && (
+            <span className="ml-2 text-base font-normal text-gray-500">
+              {v.name.en}
+            </span>
+          )}
         </h3>
-        <p className="text-sm text-graytext line-clamp-1">📍 {v.address}</p>
+        <p className="text-sm text-graytext line-clamp-1 flex items-center gap-2 mt-1">
+          {typeof displayDistance === "number" && (
+            <span className="text-inkblack">
+              {displayDistance.toFixed(1)} km
+            </span>
+          )}
+          <span className="truncate">📍 {v.address}</span>
+        </p>
         <p className="text-xs text-graytext mt-1">
-          {typeof displayDistance === "number" &&
-            `• ${displayDistance.toFixed(1)} km`}{" "}
           {v.isOpenNow && "• ⏰ Open"}
         </p>
       </div>
