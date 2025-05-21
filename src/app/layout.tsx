@@ -8,13 +8,15 @@ export const metadata = {
   description: "Specialty coffee & craft beer map",
 };
 
+interface RootLayoutProps {
+  children: ReactNode;
+  params?: { locale?: string }; // 设置为可选
+}
+
 export default function RootLayout({
   children,
-  params,
-}: {
-  children: ReactNode;
-  params: { locale: string };
-}) {
+  params = { locale: "en" }, // 提供默认值
+}: RootLayoutProps) {
   const locale = params?.locale || "en";
 
   return (

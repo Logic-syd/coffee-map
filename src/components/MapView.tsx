@@ -32,6 +32,11 @@ const JING_AN_TEMPLE: [number, number] = [121.4466, 31.2241];
 // 避免多次调用RTL插件
 let rtlPluginLoaded = false;
 
+// 判断是否在中国大陆的简易边界框
+function isInMainlandChina(lat: number, lng: number) {
+  return lng >= 73.5 && lng <= 135.1 && lat >= 18 && lat <= 53.6;
+}
+
 export default function MapView({
   center,
   zoom = 14,
@@ -56,14 +61,13 @@ export default function MapView({
   const showKo = lang.startsWith("ko");
   const [navOpen, setNavOpen] = useState(false);
 
-  // 确定最终使用的中心点 - 避免在 useEffect 中重新计算
+  // 确定最终使用的中心点和缩放级别
+  const userInChina =
+    userCoords && isInMainlandChina(userCoords.lat, userCoords.lng);
   const effectiveCenter =
     center ||
-    (userCoords
-      ? [userCoords.lng, userCoords.lat]
-      : venues.length > 0
-        ? [venues[0].lng, venues[0].lat]
-        : JING_AN_TEMPLE);
+    (userInChina ? [userCoords!.lng, userCoords!.lat] : JING_AN_TEMPLE);
+  const defaultZoom = userInChina ? zoom : 15;
 
   // 初始化地图 - 确保只执行一次
   useEffect(() => {
@@ -90,7 +94,7 @@ export default function MapView({
         container: mapContainer.current,
         style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
         center: effectiveCenter as [number, number],
-        zoom,
+        zoom: defaultZoom,
         attributionControl: false,
         renderWorldCopies: false, // 减少不必要的渲染
         interactive: true,
@@ -107,7 +111,30 @@ export default function MapView({
     // 直接强制设置中心，不使用动画
     map.once("style.load", () => {
       try {
-        map.setCenter(effectiveCenter as [number, number], { animate: false });
+        if (!userInChina) {
+          // 创建静安寺周围2公里范围的边界
+          const bounds = new maplibregl.LngLatBounds();
+          const radius = 0.018; // 约2公里的经纬度变化量
+          bounds.extend([
+            JING_AN_TEMPLE[0] - radius,
+            JING_AN_TEMPLE[1] - radius,
+          ]);
+          bounds.extend([
+            JING_AN_TEMPLE[0] + radius,
+            JING_AN_TEMPLE[1] + radius,
+          ]);
+
+          map.fitBounds(bounds, {
+            padding: { top: 50, bottom: 50, left: 50, right: 50 },
+            animate: false,
+          });
+        } else {
+          // 有中国大陆定位时，直接设置中心点
+          map.setCenter(effectiveCenter as [number, number], {
+            animate: false,
+          });
+        }
+
         // 保存地图引用并标记为已初始化
         mapRef.current = map;
         setMapInitialized(true);
@@ -200,13 +227,15 @@ export default function MapView({
         // 只在首次加载时自动 fitBounds/setCenter，后续不再自动调整
         if (!hasAutoFitted) {
           if (
-            (venues.length > 0 || markers.length > 0 || userCoords) &&
+            userInChina &&
+            (venues.length > 0 || markers.length > 0) &&
             !center
           ) {
+            // 只有在中国大陆定位时才 fitBounds
             const bounds = new maplibregl.LngLatBounds();
             venues.forEach((v) => bounds.extend([v.lng, v.lat]));
             markers.forEach((m) => bounds.extend([m.lng, m.lat]));
-            if (userCoords) bounds.extend([userCoords.lng, userCoords.lat]);
+            bounds.extend([userCoords!.lng, userCoords!.lat]);
             if (!bounds.isEmpty() && bounds.getNorth() !== bounds.getSouth()) {
               map.fitBounds(bounds, {
                 padding: { top: 50, bottom: 50, left: 50, right: 50 },
@@ -269,7 +298,7 @@ export default function MapView({
         style={{ minHeight: 320 }}
       />
       {/* 底部卡片：简要信息+按钮 */}
-      <BottomDrawer open={showDrawer}>
+      <BottomDrawer open={showDrawer} onClose={() => setShowDrawer(false)}>
         {selectedVenue && (
           <div
             className="flex flex-col justify-end min-h-0"

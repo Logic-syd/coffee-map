@@ -3,11 +3,14 @@
 import { motion } from "framer-motion";
 import { Heart, Filter } from "lucide-react";
 import { tapSpring } from "@/lib/motion";
+import { t } from "@/lib/i18n";
+
+// Define filter labels as proper type for t function
+type FilterLabel = "filter.openCafes" | "tag.dessert";
 
 const filters = [
-  { label: "Open Cafes", value: "open" },
-  { label: "Breakfast", value: "breakfast" },
-  { label: "Vegan Options", value: "vegan" },
+  { key: "open", label: "filter.openCafes" as FilterLabel },
+  { key: "dessert", label: "tag.dessert" as FilterLabel },
 ];
 
 export default function FilterBar({
@@ -71,15 +74,15 @@ export default function FilterBar({
         )}
       </div>
       {filters.map((f) => {
-        const isActive = selected.includes(f.value);
+        const isActive = selected.includes(f.key);
         return (
           <motion.button
-            key={f.value}
-            onClick={() => handleClick(f.value)}
+            key={f.key}
+            onClick={() => handleClick(f.key)}
             className={`flex-shrink-0 px-4 py-1 rounded-full text-sm whitespace-nowrap transition-colors duration-150 font-medium ${isActive ? "bg-pinkaccent text-white" : "bg-yolkyellow text-inkblack"}`}
             whileTap={tapSpring}
           >
-            {f.label}
+            {t(f.label)}
           </motion.button>
         );
       })}

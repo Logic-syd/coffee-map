@@ -4,8 +4,17 @@ import FlexSearch from "flexsearch";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+// 定义场馆类型
+interface Venue {
+  id: string;
+  name_zh: string;
+  name_ja?: string;
+  name_ko?: string;
+  [key: string]: unknown;
+}
+
 export function useSearch() {
-  const [list, setList] = useState<any[]>([]);
+  const [list, setList] = useState<Venue[]>([]);
   const [ready, setReady] = useState(false);
 
   // 1. 拉全部数据一次
@@ -23,7 +32,7 @@ export function useSearch() {
   const index = useMemo(() => {
     const idx = new FlexSearch.Index({ tokenize: "forward", preset: "match" });
     list.forEach((v, i) => {
-      idx.add(i, [v.name_zh, v.name_ja, v.name_ko].join(" "));
+      idx.add(i, [v.name_zh, v.name_ja, v.name_ko].filter(Boolean).join(" "));
     });
     return idx;
   }, [list]);
@@ -32,7 +41,8 @@ export function useSearch() {
   function search(q: string) {
     if (!q) return list;
     const ids = index.search(q);
-    return ids.map((id: number) => list[id]);
+    // 将返回的ID转换为number类型，因为我们在索引时使用的是数组索引
+    return ids.map((id) => list[Number(id)]).filter(Boolean);
   }
 
   return { ready, search };

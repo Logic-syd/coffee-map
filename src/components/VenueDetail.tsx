@@ -150,7 +150,16 @@ export default function VenueDetail({
   // 标签到图标的映射
   const servingIcons: Record<string, React.ReactNode> = {
     espresso: <FaCoffee size={28} />,
+    "italian coffee": <FaCoffee size={28} />,
     "filter coffee": <GiCoffeeCup size={28} />,
+    "hand drip coffee": <GiCoffeeBeans size={28} />,
+    "special coffee": <BsCupHot size={28} />,
+    "plant-based coffee": <GiMilkCarton size={28} />,
+    "alcoholic coffee/drinks": <GiBeerStein size={28} />,
+    "caffeine free": <FaMugHot size={28} />,
+    meals: <FaUtensils size={28} />,
+    brunch: <MdFreeBreakfast size={28} />,
+    dessert: <FaIceCream size={28} />,
     breakfast: <MdFreeBreakfast size={28} />,
     lunch: <FaUtensils size={28} />,
     "cold brew/drip": <FaGlassWhiskey size={28} />,
@@ -161,16 +170,21 @@ export default function VenueDetail({
     "plant-based milk": <GiMilkCarton size={28} />,
     "vegan options": <FaLeaf size={28} />,
     beer: <GiBeerStein size={28} />,
+    "draft beer": <GiBeerStein size={28} />,
+    "bottle shop": <GiBeerStein size={28} />,
     croissant: <GiCroissant size={28} />,
-    dessert: <FaIceCream size={28} />,
   };
   const serviceIcons: Record<string, React.ReactNode> = {
     "free wifi": <FaWifi size={28} />,
     "laptop friendly": <FaLaptop size={28} />,
     "credit cards": <FaCreditCard size={28} />,
+    "vegan options": <FaLeaf size={28} />,
+    "pet friendly": <FaDog size={28} />,
     "kids friendly": <FaChild size={28} />,
     "dog friendly": <FaDog size={28} />,
     "outdoor seating": <MdOutdoorGrill size={28} />,
+    "instagram-worthy": <FaInstagram size={28} />,
+    "non-smoking": <FaCloud size={28} />,
     wheelchair: <FaWheelchair size={28} />,
   };
 

@@ -1,6 +1,8 @@
 import React from "react";
 import BottomSheet from "@/components/BottomSheet";
-import { HeartIcon } from "@heroicons/react/24/outline";
+import { HeartIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { t } from "@/lib/i18n";
+import clsx from "clsx";
 
 interface FilterSheetProps {
   open: boolean;
@@ -9,55 +11,83 @@ interface FilterSheetProps {
   onChange: (selected: Record<string, boolean>) => void;
 }
 
-const filterGroups = [
+interface FilterOption {
+  key: string;
+  label: string;
+  icon?: React.ReactNode;
+}
+
+interface FilterGroup {
+  title: string;
+  options: FilterOption[];
+}
+
+// 新的过滤分组，按照年轻亚洲游客偏好整理
+const filterGroups: FilterGroup[] = [
   {
     title: "",
     options: [
       {
         key: "favourites",
-        icon: <HeartIcon className="w-6 h-6" />,
-        label: "Favourites",
+        icon: <HeartIcon className="w-5 h-5" />,
+        label: "filter.favourites",
       },
-      { key: "open", label: "Open Cafes" },
+      {
+        key: "open",
+        icon: <ClockIcon className="w-5 h-5" />,
+        label: "filter.openCafes",
+      },
     ],
   },
   {
-    title: "Filter Coffee",
+    title: "filter.filterCoffee",
     options: [
-      { key: "batch_brew", label: "Batch Brew" },
-      { key: "hand_brew", label: "Hand Brew" },
+      { key: "signature_coffee", label: "tag.signature" },
+      { key: "espresso", label: "tag.espresso" },
+      { key: "hand_drip", label: "tag.drip" },
+      { key: "cold_brew", label: "tag.coldbrew" },
     ],
   },
   {
-    title: "Drinks",
+    title: "filter.drinks",
     options: [
-      { key: "cold_brew", label: "Cold Brew/Drip" },
-      { key: "nitro_coffee", label: "Nitro Coffee" },
-      { key: "decaf_coffee", label: "Decaf Coffee" },
-      { key: "plant_milk", label: "Plant-Based Milk" },
+      { key: "non_coffee", label: "tag.noncoffee" },
+      { key: "alcoholic_drinks", label: "tag.alcohol" },
+      { key: "plant_milk", label: "tag.plantmilk" },
     ],
   },
   {
-    title: "Food",
+    title: "filter.food",
     options: [
-      { key: "breakfast", label: "Breakfast" },
-      { key: "lunch", label: "Lunch" },
+      { key: "brunch", label: "tag.brunch" },
+      { key: "dessert", label: "tag.dessert" },
     ],
   },
   {
-    title: "Services",
+    title: "filter.amenities",
     options: [
-      { key: "free_wifi", label: "Free Wi-Fi" },
-      { key: "laptop_friendly", label: "Laptop Friendly" },
-      { key: "credit_cards", label: "Credit Cards" },
-      { key: "vegan_options", label: "Vegan Options" },
-      { key: "kids_friendly", label: "Kids Friendly" },
-      { key: "dog_friendly", label: "Dog Friendly" },
-      { key: "outdoor_seating", label: "Outdoor Seating" },
-      { key: "wheelchair", label: "Wheelchair" },
+      { key: "free_wifi", label: "tag.wifi" },
+      { key: "english_menu", label: "tag.engmenu" },
+      { key: "credit_cards", label: "tag.card" },
+      { key: "restroom", label: "tag.restroom" },
+      { key: "instagram_worthy", label: "tag.photogenic" },
+      { key: "pet_friendly", label: "tag.pet" },
+      { key: "outdoor_seating", label: "tag.outdoor" },
+      { key: "non_smoking", label: "tag.nosmoke" },
     ],
   },
 ];
+
+// Helper function to safely use t() without TypeScript errors
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const safeT = (key: string): string => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return t(key as any);
+  } catch {
+    return key;
+  }
+};
 
 export default function FilterSheet({
   open,
@@ -68,18 +98,20 @@ export default function FilterSheet({
   function toggle(key: string) {
     onChange({ ...selected, [key]: !selected[key] });
   }
+
   function reset() {
     onChange({});
   }
+
   return (
     <BottomSheet open={open} onClose={onClose}>
-      <div className="flex flex-col items-center px-4 pt-3 pb-8">
+      <div className="px-6 pt-4 pb-10">
         {/* 筛选分组 */}
         {filterGroups.map((group, idx) => (
-          <div key={group.title || idx} className="w-full mb-4">
+          <div key={group.title || idx} className="w-full">
             {group.title && (
-              <h2 className="text-lg font-bold text-center mb-3">
-                {group.title}
+              <h2 className="text-inkblack font-semibold text-base mt-5 mb-3 text-center">
+                {safeT(group.title)}
               </h2>
             )}
             <div className="flex flex-wrap gap-3 justify-center">
@@ -87,23 +119,32 @@ export default function FilterSheet({
                 <button
                   key={opt.key}
                   type="button"
-                  className={`flex items-center gap-2 border rounded-full px-5 py-2 min-w-[140px] justify-center ${selected[opt.key] ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-300 bg-white text-gray-700"}`}
+                  className={clsx(
+                    "px-5 py-2 rounded-full text-sm whitespace-nowrap select-none transition flex items-center gap-2",
+                    selected[opt.key]
+                      ? "bg-pinkaccent text-white scale-95 transition-all duration-150 ease-in-out"
+                      : "bg-white/90 text-inkblack border border-inkblack/10 active:scale-95",
+                  )}
                   onClick={() => toggle(opt.key)}
                 >
                   {opt.icon}
-                  {opt.label}
+                  {safeT(opt.label)}
                 </button>
               ))}
             </div>
           </div>
         ))}
-        <button
-          className="text-blue-700 font-medium text-center mt-6"
-          onClick={reset}
-          type="button"
-        >
-          Reset All Filters
-        </button>
+
+        {/* Reset 按钮 */}
+        <div className="mt-8 mb-2 flex justify-center">
+          <button
+            className="text-blue-600 font-medium py-2 px-6 rounded-full hover:bg-blue-50 transition"
+            onClick={reset}
+            type="button"
+          >
+            {safeT("filter.resetAll")}
+          </button>
+        </div>
       </div>
     </BottomSheet>
   );
