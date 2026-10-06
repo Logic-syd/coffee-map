@@ -1,3 +1,5 @@
+import { useLocale } from "@/hooks/useLocale";
+import { t } from "@/lib/i18n";
 import React, { useEffect, useState } from "react";
 
 interface BottomDrawerProps {
@@ -11,6 +13,7 @@ export default function BottomDrawer({
   children,
   onClose,
 }: BottomDrawerProps) {
+  const locale = useLocale();
   const [show, setShow] = useState(open);
   const [animate, setAnimate] = useState(false);
   const [contentReady, setContentReady] = useState(false);
@@ -46,7 +49,7 @@ export default function BottomDrawer({
           <button
             onClick={onClose}
             className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-gray-500 hover:text-gray-700 shadow-sm"
-            aria-label="关闭"
+            aria-label={t("action.close", locale)}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

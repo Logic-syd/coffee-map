@@ -1,62 +1,51 @@
-# Coffee Map Tag System
+# 门店特色：一次录入，按用途展示
 
-This document defines all tags used in the Coffee Map application for filtering and displaying venue features.
+门店勾选“具有什么特色”；标签在哪出现，由统一目录 `src/lib/venue-features.ts` 决定。筛选弹窗、快捷筛选文字、详情页和后台共用此目录，不再各维护一份映射。
 
-## Filter Categories and Tags
+## 两种用途
 
-| Category      | Display (EN)      | Database Tag       | Description                             |
-| ------------- | ----------------- | ------------------ | --------------------------------------- |
-| **Coffee**    | Coffee            |                    | Coffee-related filters                  |
-|               | Signature Coffee  | `signature_coffee` | Specialty or signature coffee offerings |
-|               | Espresso          | `espresso`         | Espresso-based coffee                   |
-|               | Hand Drip         | `hand_drip`        | Hand drip/pour-over coffee              |
-|               | Cold Brew         | `cold_brew`        | Cold brew coffee                        |
-| **Drinks**    | Drinks            |                    | Non-coffee beverages                    |
-|               | Non-Coffee Drinks | `non_coffee`       | Tea, juice, and other non-coffee drinks |
-|               | Alcoholic Coffee  | `alcoholic_drinks` | Coffee with alcohol or alcoholic drinks |
-|               | Plant-Based Milk  | `plant_milk`       | Offers plant-based milk alternatives    |
-| **Food**      | Food              |                    | Food options                            |
-|               | Brunch            | `brunch`           | Offers brunch menu                      |
-|               | Dessert           | `dessert`          | Offers desserts or pastries             |
-| **Amenities** | Amenities         |                    | Venue facilities and services           |
-|               | Free Wi-Fi        | `free_wifi`        | Provides free Wi-Fi                     |
-|               | English Menu      | `english_menu`     | Offers menu in English                  |
-|               | Card Payment      | `credit_cards`     | Accepts credit/debit card payments      |
-|               | Toilet            | `restroom`         | Has toilet facilities                   |
-|               | Instag-Worthy     | `instagram_worthy` | Photogenic space for social media       |
-|               | Pet Friendly      | `pet_friendly`     | Allows pets                             |
-|               | Outdoor Seating   | `outdoor_seating`  | Provides outdoor seating area           |
-|               | Non-Smoking       | `non_smoking`      | No smoking allowed                      |
+| 示例 | 用于筛选 | 详情展示 |
+| --- | --- | --- |
+| 手冲咖啡、宠物友好、户外座位 | 是 | 是 |
+| 生啤、早餐、可用英语沟通 | 否 | 是 |
 
-## Special Filters (Not Tags)
+当前保留原设计的 17 个筛选项：
 
-| Display (EN) | Key          | Description                  |
-| ------------ | ------------ | ---------------------------- |
-| Favourites   | `favourites` | User's saved favorite venues |
-| Open Now     | `open`       | Currently open venues        |
+- 咖啡：特调咖啡、意式咖啡、手冲咖啡、冷萃咖啡。
+- 其他饮品：非咖啡饮品、含酒精饮品、植物奶。
+- 食物：早午餐、甜点。
+- 设施与服务：免费 Wi-Fi、英文菜单、支持刷卡、卫生间、适合拍照、宠物友好、户外座位、禁烟。
 
-## Detail Page Only Tags (Not Filters)
+仅在详情补充的特色：生啤、瓶装精酿、滤泡咖啡、批量滤泡、氮气咖啡、低因咖啡、早餐、午餐、纯素选项、适合带电脑、可用英语沟通、仅限现金、可外带、营业至深夜、儿童友好、允许带狗、轮椅可达。
 
-These tags only appear on venue detail pages and are not used as filter options:
+详情按咖啡、其他饮品、食物、设施与服务分组，用中文、英语、日语或韩语展示。收藏和“正在营业”是独立状态，不属于门店特色。多个特色筛选条件取交集；列表和地图使用同一结果集。
 
-| Display (EN) | Database Tag  | Description              |
-| ------------ | ------------- | ------------------------ |
-| Draft Beer   | `draft_beer`  | Offers craft beer on tap |
-| Bottle Shop  | `bottle_shop` | Sells bottled craft beer |
+## 后台使用
 
-## Notes
+在 `/admin` 选店并打开“门店特色”，勾选已确认的信息。两部分分别标明“筛选 + 详情”和“仅在详情展示”；下方提供实际详情预览，可保存或保存并前往下一家。
 
-1. All database tags should use the exact values from the "Database Tag" column above
-2. The tag system supports internationalization through the i18n system
-3. When adding new tags, update both this document and the i18n translations
-4. Maintain consistency between tag names in the database and translation keys
+“待补特色”仅表示没有已识别的特色，不代表其他门店的资料已经完整。未勾选代表尚未确认，不表示商家明确没有此服务。切换门店、刷新或退出时会提示未保存内容；照片和特色分别保存，两边都保存后才能直接前往下一家。
 
-## 历史标签参考（已过时）
+## 数据与兼容
 
-| 类别     | 常见 tag                                        | 解释                               |
-| -------- | ----------------------------------------------- | ---------------------------------- |
-| 咖啡风格 | `handdrip`, `espresso`, `specialty`, `roastery` | 手冲 / 意式 / 第三波               |
-| 餐饮配套 | `breakfast`, `brunch`, `dessert`                | 早午餐 / 甜品                      |
-| 特色服务 | `pet_friendly`, `wifi`, `late_night`            | 宠物友好 / 免费 Wi‑Fi / 营业到深夜 |
-| 饮品延伸 | `nitro`, `coldbrew`, `pour_over`                | 冷萃氮气等                         |
-| 精酿     | `draft_beer`, `bottle_shop`, `takeaway`         | 生啤 / 瓶店 / 可外带               |
+沿用 `venues.serving`、`venues.services`、`venues.tags`，不用重建 87 家门店。目录中的每项有稳定 ID、四种语言名称、分组、存储字段、`inFilters`、`inDetails` 和历史别名。饮品食物写入 `serving`，设施服务写入 `services`，适合拍照写入 `tags`。
+
+读取时识别旧拼写，如 `hand brew` / `handdrip` → `hand_drip`，`free wifi` → `free_wifi`，`vagan options` → `vegan_options`。去重后用于筛选、搜索和详情。只有用户保存某一家时，才将其已识别特色改为标准 ID。
+
+含义不明确的 `special_coffee`、`glass` 不自动推断。后台列在“旧标签待确认”，保存时留在原字段，暂不用于筛选或详情。“filter”保留为滤泡咖啡，不自动等同手冲；英语服务不等同英文菜单；允许带狗不等同允许所有宠物。
+
+## 保存与配置
+
+先有照片后台的管理员配置，再在 Supabase SQL Editor 一次执行 `supabase/install-feature-admin.sql`（包含 `202610040002` 和 `202610040003` 两个迁移）。第二个迁移创建公开可读、仅管理员可编辑的标签目录，预置现有 34 项并让门店保存接口读取目录。两个迁移都不批量改写门店，也不创建新管理员。当前本地实现和验证已完成，云端安装尚待确认。
+
+接口仅允许已有管理员调用，只能修改三个特色字段和更新时间；校验目录 ID 与字段，允许保留原有未知值。保存时比较三个字段的旧快照，拒绝覆盖其他会话的新修改。请求成功但响应丢失时，相同内容重试可成功；封面修改和特色修改不会相互覆盖。
+
+标签管理页在后台“管理标签”入口：可以新增、改名、调整分类和排序、决定筛选/详情位置、停用或恢复。中文名必填，其他语言可选；空白语言暂用中文名。内部 ID 自动生成，存储字段在创建后固定。修改展示用途后重新打开 App 生效，门店无需重录。停用只隐藏标签，原有门店值仍保存，恢复后可继续使用。
+
+明天整理标签时，按“中文名称｜分类｜用于筛选？｜详情展示？｜可选英文名称｜备注”给我即可。例如 `允许带猫｜设施与服务｜否｜是｜Cats welcome｜允许猫进入店内`。我可以用这份清单完成首次导入；之后逐项维护可直接在后台操作。门店是否具备每项特色需要另外勾选，不会因导入字典自动给 87 家店打标签。
+
+## 本次验证
+
+34 项 Node/PostgreSQL 测试全部通过，覆盖营业时间、别名兼容、含义区分、保存权限、未知值保留、参数限制、重试、编辑冲突，以及 text[] / JSONB 两种历史字段类型。生产构建通过；独立类型检查仍有 13 条历史错误，本次修改文件未新增类型错误。
+
+本次工作区包含符号链接路径，浏览器工具在启动阶段被沙箱配置阻断，因此新增特色页的浏览器交互与视觉检查尚未完成。不能把先前照片页的浏览器验证当作本次特色页验证。

@@ -1,0 +1,20 @@
+{
+  "backupListCount": 76,
+  "searchListCount": 1,
+  "savedFavorites": "{\"state\":{\"favorites\":[\"backup-1\"]},\"version\":0}",
+  "favoriteListCount": 1,
+  "favoriteCountAfterReload": 1,
+  "detailOpens": true,
+  "mapMarkersWithSearch": 76,
+  "mapFilterSheetCount": 0,
+  "fixtureListCount": 2,
+  "dessertFilteredCount": 0,
+  "errorStateText": "Open Now\nDessert",
+  "pageErrors": [],
+  "failedRequests": [
+    {
+      "url": "http://127.0.0.1:4174/rest/v1/venues?select=*&order=created_at.desc",
+      "status": 500
+    }
+  ]
+}

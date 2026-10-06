@@ -1,0 +1,13 @@
+-- First create the user's email/password account in Authentication → Users.
+-- Replace the email below with the administrator's verified account email.
+-- Run as project owner. Passwords never belong in this file.
+do $$
+declare admin_id uuid;
+begin
+  select id into strict admin_id from auth.users
+    where lower(email) = lower('replace-me@example.com')
+      and email_confirmed_at is not null;
+  insert into coffee_private.admins(user_id) values (admin_id)
+    on conflict (user_id) do nothing;
+end;
+$$;

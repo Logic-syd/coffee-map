@@ -1,5 +1,7 @@
 "use client";
-// import { useState } from "react";
+import { featureLabel } from "@/lib/venue-features";
+import { useLocale } from "@/hooks/useLocale";
+import type { VenueFeature } from "@/lib/venue-features";
 import { motion } from "framer-motion";
 import { Heart, Filter } from "lucide-react";
 import { tapSpring } from "@/lib/motion";
@@ -19,15 +21,20 @@ export default function FilterBar({
   onHeartClick,
   isFavoriteActive,
   onFilterClick,
+  catalog,
 }: {
   selected: string[];
+  catalog: VenueFeature[];
   setSelected: (v: string[]) => void;
   onHeartClick: () => void;
   isFavoriteActive: boolean;
   onFilterClick?: () => void;
 }) {
+  const locale = useLocale();
   // 计算选中的筛选条件数量（不包括"open"和收藏状态）
-  const filterCount = selected.filter((item) => item !== "open").length;
+  const filterCount = selected.filter(
+    (item) => item !== "open" && item !== "favourites",
+  ).length;
 
   const handleClick = (val: string) => {
     setSelected(
@@ -38,7 +45,7 @@ export default function FilterBar({
   };
   return (
     <div
-      className="flex gap-2 px-4 py-2 bg-pinkcream sticky top-14 z-10 items-center overflow-x-auto scrollbar-hide"
+      className="flex shrink-0 gap-2 px-4 py-2 bg-pinkcream sticky top-14 z-10 items-center overflow-x-auto scrollbar-hide"
       style={{
         WebkitOverflowScrolling: "touch",
         msOverflowStyle: "none",
@@ -46,8 +53,9 @@ export default function FilterBar({
       }}
     >
       <motion.button
-        className={`flex-shrink-0 p-2 rounded-full transition shadow-card ${isFavoriteActive ? "bg-pinkaccent" : "bg-white"}`}
-        aria-label="Favorites"
+        className={`min-h-11 min-w-11 flex-shrink-0 p-2 rounded-full transition shadow-card ${isFavoriteActive ? "bg-pinkaccent" : "bg-white"}`}
+        aria-label={t("filter.favourites", locale)}
+        aria-pressed={isFavoriteActive}
         onClick={onHeartClick}
         whileTap={tapSpring}
       >
@@ -60,8 +68,8 @@ export default function FilterBar({
       </motion.button>
       <div className="relative flex-shrink-0">
         <motion.button
-          className="p-2 rounded-full hover:bg-mintice/60 transition"
-          aria-label="Filters"
+          className="min-h-11 min-w-11 p-2 rounded-full hover:bg-mintice/60 transition"
+          aria-label={t("action.filters", locale)}
           onClick={onFilterClick}
           whileTap={tapSpring}
         >
@@ -73,19 +81,35 @@ export default function FilterBar({
           </span>
         )}
       </div>
-      {filters.map((f) => {
-        const isActive = selected.includes(f.key);
-        return (
-          <motion.button
-            key={f.key}
-            onClick={() => handleClick(f.key)}
-            className={`flex-shrink-0 px-4 py-1 rounded-full text-sm whitespace-nowrap transition-colors duration-150 font-medium ${isActive ? "bg-pinkaccent text-white" : "bg-yolkyellow text-inkblack"}`}
-            whileTap={tapSpring}
-          >
-            {t(f.label)}
-          </motion.button>
-        );
-      })}
+      {filters
+        .filter(
+          (f) =>
+            f.key === "open" ||
+            catalog.some(
+              (item) =>
+                item.id === f.key && item.inFilters && item.active !== false,
+            ),
+        )
+        .map((f) => {
+          const isActive = selected.includes(f.key);
+          return (
+            <motion.button
+              key={f.key}
+              onClick={() => handleClick(f.key)}
+              aria-pressed={isActive}
+              className={`min-h-11 min-w-11 flex-shrink-0 px-4 py-1 rounded-full text-sm whitespace-nowrap transition-colors duration-150 font-medium ${isActive ? "bg-pinkaccent text-white" : "bg-yolkyellow text-inkblack"}`}
+              whileTap={tapSpring}
+            >
+              {f.key === "dessert" &&
+              catalog.find((item) => item.id === "dessert")
+                ? featureLabel(
+                    catalog.find((item) => item.id === "dessert")!,
+                    locale,
+                  )
+                : t(f.label, locale)}
+            </motion.button>
+          );
+        })}
     </div>
   );
 }

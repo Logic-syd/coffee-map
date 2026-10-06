@@ -6,11 +6,14 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "export": "next build",
-    "cap-sync": "cp -R ios-cap-config/capacitor.config.ts . && npx cap sync",
+    "cap-sync": "cap sync ios",
     "build-ios": "npm run export && npm run cap-sync",
     "start": "next start",
     "lint": "next lint",
-    "generate:data": "node scripts/convert.mjs"
+    "generate:data": "node scripts/convert.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
     "@capacitor/cli": "^7.2.0",
@@ -39,6 +42,7 @@
     "zustand": "^5.0.4"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -56,5 +60,8 @@
     "tailwindcss": "^3.3.0",
     "typescript": "^5"
   },
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  }
 }

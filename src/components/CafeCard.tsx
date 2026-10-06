@@ -1,66 +1,42 @@
-import { motion, useAnimation } from "framer-motion";
+import { motion } from "framer-motion";
 import { Heart } from "lucide-react";
-import { useState } from "react";
-
-export type CafeCardProps = {
-  v: {
-    id: string;
-    name: { zh?: string; en?: string; ja?: string; ko?: string };
-    address: string;
-    image_url?: string;
-    distanceKm?: number;
-    isOpenNow?: boolean;
-  };
-  distanceKm?: number;
-  isFav?: boolean;
-  onToggleFav?: (id: string) => void;
-};
-
+import { useLocale } from "@/hooks/useLocale";
+import { t, venueName, formatDistance } from "@/lib/i18n";
+import VenueImage from "./VenueImage";
+import OpeningStatus from "./OpeningStatus";
+import type { Venue } from "@/types/venue";
 export default function CafeCard({
   v,
-  distanceKm,
+  now,
   isFav = false,
-  onToggleFav = () => {},
-}: CafeCardProps) {
-  const [pulse, setPulse] = useState(false);
-  const controls = useAnimation();
-
-  const handleHeart = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click when heart is clicked
-    setPulse(true);
-    await controls.start({
-      scale: [1, 1.2, 1],
-      transition: { duration: 0.35 },
-    });
-    setPulse(false);
-    onToggleFav(v.id);
-  };
-
-  // Use the prop distanceKm if provided, otherwise fallback to v.distanceKm
-  const displayDistance = distanceKm !== undefined ? distanceKm : v.distanceKm;
-
+  onToggleFav,
+}: {
+  v: Venue;
+  now: Date;
+  isFav?: boolean;
+  onToggleFav: (id: string) => void;
+}) {
+  const locale = useLocale();
+  const name = venueName(v.name, locale);
   return (
     <motion.div
-      className="bg-white rounded-2xl shadow-card overflow-hidden transition-transform cursor-pointer"
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ type: "spring", stiffness: 250, damping: 20 }}
+      className="bg-white rounded-2xl shadow-card overflow-hidden cursor-pointer"
+      whileTap={{ scale: 0.98 }}
     >
-      <div className="relative w-full h-44">
-        {v.image_url ? (
-          <img
-            src={v.image_url}
-            alt={v.name.zh || v.name.en || v.name.ja || v.name.ko || "No Name"}
-            className="object-cover w-full h-full"
-          />
-        ) : (
-          <div className="w-full h-full bg-pinkcream flex items-center justify-center" />
-        )}
-        <motion.button
-          className="absolute top-2 right-2 bg-white/80 rounded-full p-2 shadow-card"
-          onClick={handleHeart}
-          animate={pulse ? controls : undefined}
-          aria-label="Favorite"
+      <div className="relative">
+        <VenueImage src={v.image_url} alt={name} locale={locale} />
+        <button
+          type="button"
+          className="absolute top-2 right-2 min-h-11 min-w-11 grid place-items-center bg-white/90 rounded-full shadow-card"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleFav(v.id);
+          }}
+          aria-pressed={isFav}
+          aria-label={t(
+            isFav ? "action.removeFavorite" : "action.addFavorite",
+            locale,
+          )}
         >
           <Heart
             size={22}
@@ -68,27 +44,29 @@ export default function CafeCard({
               isFav ? "text-pinkaccent fill-pinkaccent" : "text-graytext"
             }
           />
-        </motion.button>
+        </button>
       </div>
       <div className="p-4">
-        <h3 className="text-lg font-semibold text-inkblack line-clamp-1">
-          {v.name.zh}
-          {v.name.en && (
-            <span className="ml-2 text-base font-normal text-gray-500">
-              {v.name.en}
-            </span>
-          )}
+        <h3 className="text-lg font-semibold text-inkblack line-clamp-2">
+          {name}
         </h3>
-        <p className="text-sm text-graytext line-clamp-1 flex items-center gap-2 mt-1">
-          {typeof displayDistance === "number" && (
-            <span className="text-inkblack">
-              {displayDistance.toFixed(1)} km
+        {name !== v.name.zh && v.name.zh && (
+          <p className="text-sm text-gray-500" lang="zh-CN">
+            {v.name.zh}
+          </p>
+        )}
+        <p className="text-sm text-graytext flex items-start gap-2 mt-1">
+          {typeof v.distanceKm === "number" && (
+            <span className="shrink-0 text-inkblack">
+              {formatDistance(v.distanceKm, locale)}
             </span>
           )}
-          <span className="truncate">📍 {v.address}</span>
+          <span className="line-clamp-2" lang={v.address ? "zh-CN" : locale}>
+            {v.address || t("venue.addressMissing", locale)}
+          </span>
         </p>
-        <p className="text-xs text-graytext mt-1">
-          {v.isOpenNow && "• ⏰ Open"}
+        <p className="text-sm mt-2">
+          <OpeningStatus hours={v.hours} now={now} locale={locale} />
         </p>
       </div>
     </motion.div>

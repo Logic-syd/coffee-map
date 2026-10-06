@@ -43,3 +43,8 @@ dist
 .next
 out
 
+# Local database recovery exports
+/backups/
+
+# Share configuration names without local credentials
+!.env.example

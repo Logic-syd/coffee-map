@@ -1,5 +1,6 @@
 // src/components/DrawerMenu.tsx
 "use client";
+import LanguagePicker from "./LanguagePicker";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import Link from "next/link";
@@ -13,22 +14,24 @@ import {
 import { motion } from "framer-motion";
 import { tapSpring } from "@/lib/motion";
 import { t } from "@/lib/i18n";
+import { useLocale } from "@/hooks/useLocale";
 
 type Props = { open: boolean; onClose: () => void };
 
 export default function DrawerMenu({ open, onClose }: Props) {
   const pathname = usePathname();
+  const locale = useLocale();
 
   // 简化导航菜单，使用原始路径
   const menu = [
     {
       href: "/",
-      label: t("menu.home", "en"),
+      label: t("menu.home", locale),
       icon: <HomeIcon className="w-5 h-5" />,
     },
     {
       href: "/support",
-      label: t("menu.support", "en"),
+      label: t("menu.support", locale),
       icon: (
         <svg
           className="w-5 h-5"
@@ -43,12 +46,12 @@ export default function DrawerMenu({ open, onClose }: Props) {
     },
     {
       href: "/share",
-      label: t("menu.share", "en"),
+      label: t("menu.share", locale),
       icon: <ShareIcon className="w-5 h-5" />,
     },
     {
       href: "/about",
-      label: t("menu.about", "en"),
+      label: t("menu.about", locale),
       icon: <InformationCircleIcon className="w-5 h-5" />,
     },
   ];
@@ -56,6 +59,9 @@ export default function DrawerMenu({ open, onClose }: Props) {
   return (
     <Transition show={open} as={Fragment}>
       <Dialog className="relative z-50" onClose={onClose}>
+        <Dialog.Title className="sr-only">
+          {t("action.menu", locale)}
+        </Dialog.Title>
         {/* 背景遮罩 - 使用 Transition 实现淡入淡出效果 */}
         <Transition.Child
           as={Fragment}
@@ -84,14 +90,14 @@ export default function DrawerMenu({ open, onClose }: Props) {
           leaveTo="-translate-x-full"
         >
           <div className="fixed inset-y-0 left-0 max-w-xs z-50">
-            <div className="w-64 h-full bg-white shadow-xl overflow-hidden flex flex-col rounded-r-3xl">
+            <div className="w-64 h-full bg-white shadow-xl overflow-y-auto flex flex-col rounded-r-3xl">
               {/* 顶部Logo区 */}
               <div className="flex flex-col items-start justify-center px-6 pt-8 pb-4">
                 <span
                   className="text-2xl font-bold italic text-pinkaccent select-none"
                   style={{ fontFamily: "cursive, serif" }}
                 >
-                  Coffee ShangHai
+                  Coffee Map
                 </span>
                 {/* 这里后续可放Logo图 */}
               </div>
@@ -99,15 +105,15 @@ export default function DrawerMenu({ open, onClose }: Props) {
               <div className="absolute top-4 right-4">
                 <motion.button
                   onClick={onClose}
-                  className="p-1 rounded-full hover:bg-pinkaccent/20 transition-colors"
-                  aria-label={t("action.close", "en")}
+                  className="grid min-h-11 min-w-11 place-items-center p-1 rounded-full hover:bg-pinkaccent/20 transition-colors"
+                  aria-label={t("action.close", locale)}
                   whileTap={tapSpring}
                 >
                   <XMarkIcon className="h-6 w-6 text-pinkaccent" />
                 </motion.button>
               </div>
               {/* 菜单区域 */}
-              <nav className="flex-1 flex flex-col gap-2 px-2 mt-10">
+              <nav className="flex-1 flex flex-col gap-2 px-2 mt-4">
                 {menu.map((item) => {
                   const isActive =
                     pathname === item.href || pathname === item.href + "/";
@@ -130,9 +136,10 @@ export default function DrawerMenu({ open, onClose }: Props) {
                   );
                 })}
               </nav>
+              <LanguagePicker />
               {/* 底部区域 */}
               <div className="px-6 py-4 text-sm text-graytext border-t mt-auto">
-                <p>© 2023 Coffee Map</p>
+                <p>© Coffee Map</p>
               </div>
             </div>
           </div>

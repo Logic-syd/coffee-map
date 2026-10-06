@@ -3,39 +3,52 @@ import { useEffect, useState, useMemo } from "react";
 import CafeCard from "@/components/CafeCard";
 import BottomSheet from "@/components/BottomSheet";
 import TopBar from "@/components/TopBar";
-import { supabase } from "@/lib/supabase";
 import FilterSheet from "@/components/FilterSheet";
 import { useUserLocation } from "@/hooks/useUserLocation";
-import { calcDistanceKm } from "@/utils/geo";
+import { useLocale } from "@/hooks/useLocale";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
+import { isOpenNow } from "@/utils/opening-hours";
+import {
+  withDistances,
+  isWithinShanghaiCoverage,
+  NEARBY_RADIUS_KM,
+} from "@/utils/nearby";
 import MapView from "@/components/MapView";
 import { useFavoritesStore } from "@/store/favorites";
 import VenueDetail from "@/components/VenueDetail";
 import FilterBar from "@/components/FilterBar";
-import Loading from "./loading";
-
-// Define venue type
-export interface Venue {
-  id: string;
-  name: { zh?: string; en?: string; ja?: string; ko?: string };
-  address: string;
-  lat: number;
-  lng: number;
-  image_url?: string;
-  hours?: {
-    default?: [string, string, string][];
-  };
-  serving?: string[];
-  services?: string[];
-  tags?: string[];
-  distanceKm?: number;
-  isOpenNow?: boolean;
-  created_at?: string;
-  [key: string]: unknown;
-}
-
+import { VENUE_FEATURES, matchesFeatureFilters } from "@/lib/venue-features";
+import { loadVenueFeatureCatalog } from "@/lib/venue-feature-catalog";
+import { matchesVenueSearch } from "@/utils/venue-search";
+import { useVenues } from "@/lib/useVenues";
+import { t, venueName } from "@/lib/i18n";
+export type { Venue } from "@/types/venue";
+const buttonClass =
+  "min-h-11 rounded-full bg-white px-4 py-2 text-sm font-medium text-inkblack shadow-sm";
 export default function HomePage() {
-  const [venues, setVenues] = useState<Venue[]>([]);
-  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  const locale = useLocale();
+  const now = useMinuteClock();
+  const { venues, loading, error, retry } = useVenues();
+  const [catalog, setCatalog] = useState(VENUE_FEATURES);
+  useEffect(() => {
+    let live = true;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    void loadVenueFeatureCatalog(controller.signal)
+      .then(({ features }) => {
+        if (live) setCatalog(features);
+      })
+      .catch(() => {
+        /* Bundled catalog works while the optional cloud catalog is unavailable. */
+      })
+      .finally(() => clearTimeout(timer));
+    return () => {
+      live = false;
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, []);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [mapMode, setMapMode] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -47,267 +60,204 @@ export default function HomePage() {
     coords: userCoords,
     request: requestLocation,
   } = useUserLocation();
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const favorites = useFavoritesStore((s) => s.favorites);
-  const [loading, setLoading] = useState(true);
-
-  // 用useMemo计算venuesWithDistance，避免死循环
-  const venuesWithDistance = useMemo(() => {
-    if (locStatus === "granted" && userCoords) {
-      return [...venues]
-        .map((v) => ({
-          ...v,
-          distanceKm: calcDistanceKm(userCoords, { lat: v.lat, lng: v.lng }),
-        }))
-        .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
-    }
-    return venues;
-  }, [venues, locStatus, userCoords]);
-
-  // 客户端筛选结果
-  const [clientFilteredVenues, setClientFilteredVenues] = useState(venues);
-
-  useEffect(() => {
-    setClientFilteredVenues(
-      venuesWithDistance.filter((v) => {
-        // 搜索支持多语言
-        const searchMatched =
-          !search ||
-          Object.values(v.name || {}).some((n) =>
-            n?.toLowerCase().includes(search.toLowerCase()),
-          );
-        if (!searchMatched) return false;
-        if (showFavoritesOnly && !favorites.includes(v.id)) return false;
-        for (const key in selectedFilters) {
-          if (!selectedFilters[key]) continue;
-          if (key === "open") {
-            if (!isOpenNow(v.hours, getBeijingNow())) return false;
-          } else {
-            // 标签类：serving/services/tags 任一字段包含即匹配
-            const labelMap: Record<string, string> = {
-              breakfast: "breakfast",
-              vegan_options: "vegan options",
-              free_wifi: "free wifi",
-              laptop_friendly: "laptop friendly",
-              credit_cards: "credit cards",
-              kids_friendly: "kids friendly",
-              dog_friendly: "dog friendly",
-              outdoor_seating: "outdoor seating",
-              wheelchair: "wheelchair",
-              batch_brew: "batch brew",
-              hand_brew: "hand brew",
-              cold_brew: "cold brew/drip",
-              nitro_coffee: "nitro coffee",
-              decaf_coffee: "decaf coffee",
-              plant_milk: "plant-based milk",
-              lunch: "lunch",
-            };
-            const label = labelMap[key];
-            if (
-              !(
-                v.serving?.includes(label) ||
-                v.services?.includes(label) ||
-                v.tags?.includes(label)
-              )
-            ) {
-              return false;
-            }
-          }
-        }
-        return true;
-      }),
+  const [browseAll, setBrowseAll] = useState(false);
+  const inShanghai = Boolean(
+    userCoords && isWithinShanghaiCoverage(userCoords),
+  );
+  const nearby = inShanghai && !browseAll;
+  const favorites = useFavoritesStore((state) => state.favorites);
+  const withDistance = useMemo(
+    () => withDistances(venues, userCoords),
+    [venues, userCoords],
+  );
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    const features = Object.keys(selectedFilters).filter(
+      (key) => selectedFilters[key] && key !== "open" && key !== "favourites",
     );
-  }, [
-    venuesWithDistance,
-    search,
-    selectedFilters,
-    userCoords,
-    locStatus,
-    showFavoritesOnly,
-    favorites,
-  ]);
-
-  function isOpenNow(hours: Venue["hours"], now: Date) {
-    if (!hours?.default) return false;
-    const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const day = dayMap[now.getDay()];
-    const today = hours.default.find(([d]) => d === day);
-    if (!today) return false;
-    // Destructure array and ignore first element
-    const [, open, close] = today;
-    if (!open || !close) return false;
-    const [oh, om] = open.split(":").map(Number);
-    const [ch, cm] = close.split(":").map(Number);
-    const openMins = oh * 60 + om;
-    const closeMins = ch * 60 + cm;
-    const nowMins = now.getHours() * 60 + now.getMinutes();
-    return nowMins >= openMins && nowMins <= closeMins;
-  }
-
-  // 获取东八区当前时间
-  function getBeijingNow() {
-    const now = new Date();
-    // 东八区与UTC的时差为+8小时
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-    return new Date(utc + 8 * 3600000);
-  }
-
-  // 地图按钮点击逻辑，集成定位和降级体验
-  function handleMapClick() {
-    // 每次点击都同步请求定位，兼容 iOS WebView/Hybrid
-    requestLocation();
-    setMapMode(true);
-  }
-
-  // 判断用户是否在中国大陆
-  function isInChina({ lat, lng }: { lat: number; lng: number }) {
-    return lng >= 73.5 && lng <= 135.1 && lat >= 18 && lat <= 53.6;
-  }
-
-  // Handle favorite toggle
-  const handleFavoriteToggle = (id: string) => {
+    return withDistance.filter((venue) => {
+      if (nearby && (venue.distanceKm ?? Infinity) > NEARBY_RADIUS_KM)
+        return false;
+      if (!matchesVenueSearch(venue, query, catalog)) return false;
+      if (selectedFilters.favourites && !favorites.includes(venue.id))
+        return false;
+      if (selectedFilters.open && !isOpenNow(venue.hours, now)) return false;
+      return matchesFeatureFilters(venue, features, catalog);
+    });
+  }, [withDistance, search, selectedFilters, nearby, catalog, favorites, now]);
+  const selectedVenue = withDistance.find((venue) => venue.id === selectedId);
+  const toggleFavorite = (id: string) => {
     const store = useFavoritesStore.getState();
-    if (store.isFavorite(id)) {
-      store.removeFavorite(id);
-    } else {
-      store.addFavorite(id);
-    }
+    if (store.isFavorite(id)) store.removeFavorite(id);
+    else store.addFavorite(id);
   };
-
-  useEffect(() => {
-    supabase
-      .from("venues")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) console.error(error);
-        else
-          setVenues(
-            (data || []).map((v: Record<string, unknown>) => ({
-              id: v.id as string,
-              address: v.address as string,
-              lat: v.lat as number,
-              lng: v.lng as number,
-              image_url: v.image_url as string | undefined,
-              serving: v.serving as string[] | undefined,
-              services: v.services as string[] | undefined,
-              tags: v.tags as string[] | undefined,
-              hours: v.hours as
-                | { default?: [string, string, string][] }
-                | undefined,
-              created_at: v.created_at as string | undefined,
-              name: {
-                zh: v.name_zh as string | undefined,
-                en: v.name_eng as string | undefined,
-                ja: v.name_ja as string | undefined,
-                ko: v.name_ko as string | undefined,
-              },
-            })),
-          );
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) return <Loading />;
-
+  const locationKey =
+    locStatus === "granted"
+      ? !inShanghai
+        ? "location.outside"
+        : nearby
+          ? "location.nearby"
+          : "location.shanghai"
+      : (`location.${locStatus}` as const);
+  const reset = () => {
+    setSearch("");
+    setSelectedFilters({});
+  };
+  const hasFilters =
+    Boolean(search.trim()) || Object.values(selectedFilters).some(Boolean);
+  const stateMessage = error
+    ? t("data.error", locale)
+    : loading
+      ? t("loading", locale)
+      : !venues.length
+        ? t("data.empty", locale)
+        : nearby
+          ? t("data.noNearby", locale)
+          : t("data.noMatches", locale);
+  const showState = loading || error || !filtered.length;
   return (
-    <>
-      {mapMode ? (
-        <div className="flex flex-col h-screen">
-          <TopBar
-            search={search}
-            setSearch={setSearch}
-            onMapClick={() => setMapMode(false)}
-            isMapMode={true}
+    <div
+      className={
+        mapMode ? "flex h-[100dvh] flex-col overflow-hidden" : "min-h-screen"
+      }
+    >
+      <TopBar
+        search={search}
+        setSearch={setSearch}
+        onMapClick={() => setMapMode((value) => !value)}
+        isMapMode={mapMode}
+      />
+      <FilterBar
+        catalog={catalog}
+        selected={Object.keys(selectedFilters).filter(
+          (key) => selectedFilters[key],
+        )}
+        setSelected={(values) =>
+          setSelectedFilters(
+            Object.fromEntries(values.map((key) => [key, true])),
+          )
+        }
+        onHeartClick={() =>
+          setSelectedFilters((current) => ({
+            ...current,
+            favourites: !current.favourites,
+          }))
+        }
+        isFavoriteActive={Boolean(selectedFilters.favourites)}
+        onFilterClick={() => setFilterOpen(true)}
+      />
+      <div className="shrink-0 border-b border-black/5 px-4 py-2 text-sm text-gray-700">
+        <p role="status">{t(locationKey, locale)}</p>
+        <div className="mt-1 flex flex-wrap gap-2">
+          <button
+            className={buttonClass}
+            onClick={() => {
+              setBrowseAll(false);
+              requestLocation();
+            }}
+            disabled={locStatus === "loading"}
+          >
+            {t("action.locate", locale)}
+          </button>
+          {nearby && (
+            <button className={buttonClass} onClick={() => setBrowseAll(true)}>
+              {t("action.browseShanghai", locale)}
+            </button>
+          )}
+          {inShanghai && browseAll && (
+            <button className={buttonClass} onClick={() => setBrowseAll(false)}>
+              {t("action.nearby", locale)}
+            </button>
+          )}
+        </div>
+      </div>
+      {showState ? (
+        <main
+          className="p-6 text-center text-gray-700"
+          role={error ? "alert" : "status"}
+          aria-busy={loading}
+        >
+          <p className="mb-4">{stateMessage}</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {error && (
+              <button className={buttonClass} onClick={retry}>
+                {t("action.retry", locale)}
+              </button>
+            )}
+            {!error && !loading && nearby && (
+              <button
+                className={buttonClass}
+                onClick={() => setBrowseAll(true)}
+              >
+                {t("action.browseShanghai", locale)}
+              </button>
+            )}
+            {!error && !loading && hasFilters && (
+              <button className={buttonClass} onClick={reset}>
+                {t("action.reset", locale)}
+              </button>
+            )}
+          </div>
+        </main>
+      ) : mapMode ? (
+        <div className="relative min-h-0 flex-1">
+          <MapView
+            catalog={catalog}
+            venues={filtered}
+            userCoords={inShanghai ? userCoords : undefined}
+            nearby={nearby}
+            onShowList={() => setMapMode(false)}
           />
-          <div className="sticky top-14 z-10">
-            <FilterBar
-              selected={Object.keys(selectedFilters).filter(
-                (k) => selectedFilters[k],
-              )}
-              setSelected={(arr) => {
-                // 只保留原有 selectedFilters 结构
-                const next: Record<string, boolean> = {};
-                arr.forEach((k) => (next[k] = true));
-                setSelectedFilters(next);
-              }}
-              onHeartClick={() => setShowFavoritesOnly((v) => !v)}
-              isFavoriteActive={showFavoritesOnly}
-              onFilterClick={() => setFilterOpen(true)}
-            />
-          </div>
-          <div className="flex-1 relative">
-            <MapView
-              venues={venues}
-              userCoords={
-                locStatus === "granted" && userCoords && isInChina(userCoords)
-                  ? userCoords
-                  : undefined
-              }
-              className="absolute inset-0 z-0"
-            />
-          </div>
         </div>
       ) : (
-        <>
-          <TopBar
-            search={search}
-            setSearch={setSearch}
-            onMapClick={handleMapClick}
-            isMapMode={false}
-          />
-          <FilterBar
-            selected={Object.keys(selectedFilters).filter(
-              (k) => selectedFilters[k],
-            )}
-            setSelected={(arr) => {
-              // 只保留原有 selectedFilters 结构
-              const next: Record<string, boolean> = {};
-              arr.forEach((k) => (next[k] = true));
-              setSelectedFilters(next);
-            }}
-            onHeartClick={() => setShowFavoritesOnly((v) => !v)}
-            isFavoriteActive={showFavoritesOnly}
-            onFilterClick={() => setFilterOpen(true)}
-          />
-          <main className="p-4 space-y-4 pb-24 pt-[20px]">
-            {clientFilteredVenues.map((v) => (
-              <div key={v.id} onClick={() => setSelectedVenue(v)}>
-                <CafeCard
-                  v={{
-                    id: v.id,
-                    name: v.name,
-                    address: v.address,
-                    image_url: v.image_url,
-                    isOpenNow: isOpenNow(v.hours, getBeijingNow()),
-                  }}
-                  distanceKm={v.distanceKm}
-                  isFav={favorites.includes(v.id)}
-                  onToggleFav={handleFavoriteToggle}
-                />
-              </div>
-            ))}
-          </main>
-          <BottomSheet
-            open={!!selectedVenue}
-            onClose={() => setSelectedVenue(null)}
-          >
-            {selectedVenue && (
-              <VenueDetail
-                v={selectedVenue}
-                onClose={() => setSelectedVenue(null)}
-                distanceKm={selectedVenue.distanceKm}
+        <main className="space-y-4 p-4 pb-24">
+          {filtered.map((venue) => (
+            <div
+              key={venue.id}
+              role="button"
+              tabIndex={0}
+              aria-label={venueName(venue.name, locale)}
+              onClick={() => setSelectedId(venue.id)}
+              onKeyDown={(event) => {
+                if (
+                  event.target === event.currentTarget &&
+                  (event.key === "Enter" || event.key === " ")
+                ) {
+                  event.preventDefault();
+                  setSelectedId(venue.id);
+                }
+              }}
+            >
+              <CafeCard
+                v={venue}
+                now={now}
+                isFav={favorites.includes(venue.id)}
+                onToggleFav={toggleFavorite}
               />
-            )}
-          </BottomSheet>
-          <FilterSheet
-            open={filterOpen}
-            onClose={() => setFilterOpen(false)}
-            selected={selectedFilters}
-            onChange={setSelectedFilters}
-          />
-        </>
+            </div>
+          ))}
+        </main>
       )}
-    </>
+      <BottomSheet
+        open={Boolean(selectedVenue)}
+        onClose={() => setSelectedId(null)}
+      >
+        {selectedVenue && (
+          <VenueDetail
+            catalog={catalog}
+            v={selectedVenue}
+            onClose={() => setSelectedId(null)}
+            distanceKm={selectedVenue.distanceKm}
+          />
+        )}
+      </BottomSheet>
+      <FilterSheet
+        catalog={catalog}
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        selected={selectedFilters}
+        onChange={setSelectedFilters}
+      />
+    </div>
   );
 }

@@ -6,6 +6,8 @@ import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { tapSpring } from "@/lib/motion";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useLocale } from "@/hooks/useLocale";
+import { t } from "@/lib/i18n";
 
 export default function TopBar({
   search,
@@ -26,6 +28,7 @@ export default function TopBar({
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const router = useRouter();
+  const locale = useLocale();
 
   const handleBack = () => {
     if (onBack) onBack();
@@ -34,12 +37,12 @@ export default function TopBar({
 
   return (
     <>
-      <header className="sticky top-0 z-30 h-14 bg-pinkcream rounded-b-3xl shadow-card flex items-center px-4 gap-2">
+      <header className="sticky top-0 z-30 h-14 shrink-0 bg-pinkcream rounded-b-3xl shadow-card flex items-center px-4 gap-2">
         {showBack ? (
           <motion.button
             onClick={handleBack}
-            className="p-2 hover:bg-pinkaccent/30 rounded-full transition"
-            aria-label="Back"
+            className="min-h-11 min-w-11 grid place-items-center p-2 hover:bg-pinkaccent/30 rounded-full transition"
+            aria-label={t("action.back", locale)}
             whileTap={tapSpring}
           >
             <ArrowLeftIcon className="w-5 h-5 text-inkblack" />
@@ -47,8 +50,8 @@ export default function TopBar({
         ) : (
           <motion.button
             onClick={() => setDrawerOpen(true)}
-            className="p-2 hover:bg-pinkaccent/30 rounded-full transition"
-            aria-label="Open menu"
+            className="min-h-11 min-w-11 grid place-items-center p-2 hover:bg-pinkaccent/30 rounded-full transition"
+            aria-label={t("action.menu", locale)}
             whileTap={tapSpring}
           >
             <Menu size={24} className="text-inkblack" />
@@ -62,17 +65,18 @@ export default function TopBar({
           <div className="flex-1 flex items-center">
             <input
               type="text"
-              value={search}
+              value={search ?? ""}
               onChange={(e) => setSearch?.(e.target.value)}
-              placeholder="Search cafes, tags..."
-              className="w-full rounded-full bg-white shadow-input px-4 py-2 text-sm placeholder-graytext text-inkblack focus:outline-none"
+              placeholder={t("search.placeholder", locale)}
+              aria-label={t("search.placeholder", locale)}
+              className="w-full rounded-full bg-white shadow-input px-4 py-2 text-base placeholder-graytext text-inkblack focus:outline-none"
             />
           </div>
         )}
         {setSearch && (
           <motion.button
-            className={`ml-2 p-2 rounded-full ${isMapMode ? "bg-white hover:bg-white/80" : "hover:bg-yolkyellow/60"} transition`}
-            aria-label={isMapMode ? "Back to list" : "View map"}
+            className={`min-h-11 min-w-11 grid place-items-center ml-2 p-2 rounded-full ${isMapMode ? "bg-white hover:bg-white/80" : "hover:bg-yolkyellow/60"} transition`}
+            aria-label={t(isMapMode ? "action.list" : "action.map", locale)}
             onClick={onMapClick}
             whileTap={tapSpring}
           >

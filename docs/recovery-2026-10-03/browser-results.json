@@ -1,0 +1,8 @@
+{
+  "cloudStatus": 200,
+  "cloudRows": 87,
+  "phoneVisible": true,
+  "splitHoursDetail": "Opening hours\nMon09:00 – 12:00\nMon14:00 – 18:00",
+  "pageErrors": [],
+  "scope": "Cloud reads only; split hours record was injected into this isolated browser, never written to Supabase"
+}

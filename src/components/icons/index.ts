@@ -1,8 +1,10 @@
-export { default as EspressoIcon } from './EspressoIcon';
-export { default as FilterIcon } from './FilterIcon';
-export { default as ColdbrewIcon } from './ColdbrewIcon';
-export { default as BreakfastIcon } from './BreakfastIcon';
-export { default as WifiIcon } from './WifiIcon';
-export { default as CreditIcon } from './CreditIcon';
-export { default as VeganIcon } from './VeganIcon';
-export { default as LaptopIcon } from './LaptopIcon'; 
+export {
+  Coffee as EspressoIcon,
+  SlidersHorizontal as FilterIcon,
+  Utensils as BreakfastIcon,
+  Wifi as WifiIcon,
+  CreditCard as CreditIcon,
+  Leaf as VeganIcon,
+  Laptop as LaptopIcon,
+} from "lucide-react";
+export { default as ColdbrewIcon } from "./ColdbrewIcon";

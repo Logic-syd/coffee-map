@@ -1,64 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useLocale } from "@/hooks/useLocale";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
+import type { TranslationKey } from "@/lib/i18n";
+import { t, venueName, formatDistance, formatHours } from "@/lib/i18n";
+import { getOpeningIntervals, WEEKDAYS } from "@/utils/opening-hours";
+import VenueImage from "./VenueImage";
+import OpeningStatus from "./OpeningStatus";
+import type { Venue } from "@/types/venue";
 import FavoriteButton from "@/components/FavoriteButton";
 import { LinkIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import { FaInstagram, FaFacebook, FaTwitter } from "react-icons/fa";
-import {
-  FaCoffee,
-  FaWifi,
-  FaLaptop,
-  FaCreditCard,
-  FaLeaf,
-  FaDog,
-  FaChild,
-  FaWheelchair,
-  FaMugHot,
-  FaIceCream,
-  FaUtensils,
-  FaGlassWhiskey,
-  FaCloud,
-} from "react-icons/fa";
-import { MdFreeBreakfast, MdOutdoorGrill } from "react-icons/md";
-import {
-  GiMilkCarton,
-  GiBeerStein,
-  GiCroissant,
-  GiCoffeeCup,
-  GiCoffeeBeans,
-} from "react-icons/gi";
-import { BsCupHot } from "react-icons/bs";
 import { ChevronDown } from "lucide-react";
-
-// 定义venue类型
-interface Venue {
-  id: string;
-  name?: { zh?: string; en?: string; ja?: string; ko?: string };
-  address: string;
-  lat: number;
-  lng: number;
-  contacts?: {
-    site?: string;
-    fb?: string;
-    ig?: string;
-    twitter?: string;
-    tel?: string;
-  };
-  serving?: string[];
-  services?: string[];
-  hours?: {
-    default?: [string, string, string][];
-  };
-  image_url?: string;
-  [key: string]: unknown; // Use unknown instead of any
-}
+import VenueFeatures from "@/components/VenueFeatures";
+import type { VenueFeature } from "@/lib/venue-features";
 
 export default function VenueDetail({
   v,
   onClose,
   distanceKm,
+  catalog,
 }: {
   v: Venue;
   onClose?: () => void;
   distanceKm?: number;
+  catalog?: VenueFeature[];
 }) {
   const [popup, setPopup] = useState<null | {
     type: "name" | "address";
@@ -66,211 +31,177 @@ export default function VenueDetail({
   }>(null);
   const [copied, setCopied] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const [lang, setLang] = useState("zh");
-  const showJa = lang.startsWith("ja");
-  const showKo = lang.startsWith("ko");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setLang(navigator.language || "zh");
-    }
-  }, []);
-
-  if (!v) return null;
-
-  // 取多语言名
-  const nameZh = v.name?.zh;
-  const nameEn = v.name?.en;
-  const nameJa = v.name?.ja;
-  const nameKo = v.name?.ko;
+  const lang = useLocale();
+  const now = useMinuteClock();
+  const displayName = venueName(v.name, lang);
+  const intervals = getOpeningIntervals(v.hours);
+  const [actionError, setActionError] = useState<TranslationKey>();
 
   // 联系方式图标配置
   const contactIcons = [
     v.contacts?.site && {
-      key: "site",
+      key: "site" as const,
       icon: <LinkIcon className="w-6 h-6" />,
       url: v.contacts.site.startsWith("http")
         ? v.contacts.site
         : `https://${v.contacts.site}`,
     },
     v.contacts?.fb && {
-      key: "fb",
+      key: "fb" as const,
       icon: <FaFacebook className="w-6 h-6" />,
       url: v.contacts.fb.startsWith("http")
         ? v.contacts.fb
         : `https://facebook.com/${v.contacts.fb}`,
     },
     v.contacts?.ig && {
-      key: "ig",
+      key: "ig" as const,
       icon: <FaInstagram className="w-6 h-6" />,
       url: v.contacts.ig.startsWith("http")
         ? v.contacts.ig
         : `https://instagram.com/${v.contacts.ig}`,
     },
     v.contacts?.twitter && {
-      key: "twitter",
+      key: "twitter" as const,
       icon: <FaTwitter className="w-6 h-6" />,
       url: v.contacts.twitter.startsWith("http")
         ? v.contacts.twitter
         : `https://twitter.com/${v.contacts.twitter}`,
     },
     v.contacts?.tel && {
-      key: "tel",
+      key: "tel" as const,
       icon: <PhoneIcon className="w-6 h-6" />,
       url: `tel:${v.contacts.tel}`,
     },
-  ].filter((c): c is { key: string; icon: React.ReactElement; url: string } =>
-    Boolean(c),
+  ].filter(
+    (
+      c,
+    ): c is {
+      key: "site" | "fb" | "ig" | "twitter" | "tel";
+      icon: React.ReactElement;
+      url: string;
+    } => Boolean(c),
   );
 
   // 导航弹窗选项
   const mapOptions: { name: string; url: string }[] = [
     {
-      name: "Apple Maps",
-      url: `http://maps.apple.com/?daddr=${encodeURIComponent(v.address)}`,
+      name: t("map.apple", lang),
+      url: `https://maps.apple.com/?daddr=${encodeURIComponent(v.address)}`,
     },
     {
-      name: "Google Maps",
+      name: t("map.google", lang),
       url: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(v.address)}`,
     },
     {
-      name: "高德地图",
+      name: t("map.amap", lang),
       url: `https://uri.amap.com/marker?position=${v.lng},${v.lat}&name=${encodeURIComponent(v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || "")}`,
     },
     {
-      name: "Kakao Map",
+      name: t("map.kakao", lang),
       url: `https://map.kakao.com/link/map/${encodeURIComponent(v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || "")},${v.lat},${v.lng}`,
     },
     {
-      name: "Naver Map",
+      name: t("map.naver", lang),
       url: `https://map.naver.com/v5/search/${encodeURIComponent(v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || "")}?c=${v.lng},${v.lat},16,0,0,0,dh`,
     },
   ];
 
-  // 标签到图标的映射
-  const servingIcons: Record<string, React.ReactNode> = {
-    espresso: <FaCoffee size={28} />,
-    "italian coffee": <FaCoffee size={28} />,
-    "filter coffee": <GiCoffeeCup size={28} />,
-    "hand drip coffee": <GiCoffeeBeans size={28} />,
-    "special coffee": <BsCupHot size={28} />,
-    "plant-based coffee": <GiMilkCarton size={28} />,
-    "alcoholic coffee/drinks": <GiBeerStein size={28} />,
-    "caffeine free": <FaMugHot size={28} />,
-    meals: <FaUtensils size={28} />,
-    brunch: <MdFreeBreakfast size={28} />,
-    dessert: <FaIceCream size={28} />,
-    breakfast: <MdFreeBreakfast size={28} />,
-    lunch: <FaUtensils size={28} />,
-    "cold brew/drip": <FaGlassWhiskey size={28} />,
-    "batch brew": <BsCupHot size={28} />,
-    "hand brew": <GiCoffeeBeans size={28} />,
-    "nitro coffee": <FaCloud size={28} />,
-    "decaf coffee": <FaMugHot size={28} />,
-    "plant-based milk": <GiMilkCarton size={28} />,
-    "vegan options": <FaLeaf size={28} />,
-    beer: <GiBeerStein size={28} />,
-    "draft beer": <GiBeerStein size={28} />,
-    "bottle shop": <GiBeerStein size={28} />,
-    croissant: <GiCroissant size={28} />,
-  };
-  const serviceIcons: Record<string, React.ReactNode> = {
-    "free wifi": <FaWifi size={28} />,
-    "laptop friendly": <FaLaptop size={28} />,
-    "credit cards": <FaCreditCard size={28} />,
-    "vegan options": <FaLeaf size={28} />,
-    "pet friendly": <FaDog size={28} />,
-    "kids friendly": <FaChild size={28} />,
-    "dog friendly": <FaDog size={28} />,
-    "outdoor seating": <MdOutdoorGrill size={28} />,
-    "instagram-worthy": <FaInstagram size={28} />,
-    "non-smoking": <FaCloud size={28} />,
-    wheelchair: <FaWheelchair size={28} />,
-  };
-
   // 分享逻辑
   const handleShare = async () => {
-    const displayName =
-      v.name?.zh || v.name?.en || v.name?.ja || v.name?.ko || "";
-    const shareText = `${displayName}\n${v.address}`;
+    setActionError(undefined);
+    const shareText = [
+      displayName,
+      v.name.zh !== displayName ? v.name.zh : undefined,
+      v.address,
+    ]
+      .filter(Boolean)
+      .join("\n");
     if (navigator.share) {
       try {
         await navigator.share({
           title: displayName,
           text: shareText,
         });
-      } catch {}
+      } catch (error) {
+        if (!(error instanceof Error && error.name === "AbortError"))
+          setActionError("action.shareError");
+      }
     } else {
-      await navigator.clipboard.writeText(shareText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      try {
+        await navigator.clipboard.writeText(shareText);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      } catch {
+        setActionError("action.shareError");
+      }
     }
   };
 
   return (
-    <main className="pb-32 space-y-6">
-      {/* 顶部图片+下滑按钮+渐变（仅有图片时显示） */}
-      {v.image_url && (
-        <div className="relative w-full">
-          <img
-            src={v.image_url}
-            alt={nameZh || nameEn || nameJa || nameKo || "No Name"}
-            className="w-full h-56 object-cover rounded-b-3xl"
-          />
-          {/* 左上角下滑按钮（白底黑icon，显眼） */}
-          {onClose && (
-            <button
-              className="absolute top-4 left-4 z-10 bg-white rounded-full p-2 shadow-card border border-black/10"
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <ChevronDown className="w-6 h-6 text-black" />
-            </button>
-          )}
-          {/* 图片底部渐变 */}
-          <div
-            className="absolute left-0 right-0 bottom-0 h-24 rounded-b-3xl pointer-events-none"
-            style={{
-              background:
-                "linear-gradient(to bottom, rgba(255,255,255,0) 0%, #ffe4ec 100%)",
-            }}
-          />
-        </div>
-      )}
-      {/* 店名与多语言名 */}
-      <div className={v.image_url ? "-mt-12 px-6" : "px-6 pt-6"}>
-        <div className="flex items-center justify-between text-2xl font-bold text-inkblack">
-          <span>{nameZh}</span>
+    <main className="space-y-6">
+      <div className="relative w-full">
+        <VenueImage
+          src={v.image_url}
+          alt={displayName}
+          locale={lang}
+          className="h-56 rounded-b-3xl"
+        />
+        {onClose && (
+          <button
+            className="absolute left-4 top-4 grid min-h-11 min-w-11 place-items-center rounded-full bg-white shadow-card"
+            onClick={onClose}
+            aria-label={t("action.close", lang)}
+          >
+            <ChevronDown className="h-6 w-6" />
+          </button>
+        )}
+      </div>
+      <div className="px-6">
+        <div className="flex items-start justify-between gap-3 text-2xl font-bold text-inkblack">
+          <h1>{displayName}</h1>
           <FavoriteButton
             venueId={v.id}
             size={28}
-            className="border-2 border-pinkaccent text-pinkaccent bg-white hover:bg-pinkaccent hover:text-white transition-colors shadow-card rounded-full p-1"
+            className="border-2 border-pinkaccent bg-white"
           />
         </div>
-        {nameEn && (
-          <div className="text-base text-gray-500 mt-1 text-left">{nameEn}</div>
+        {v.name.zh && v.name.zh !== displayName && (
+          <button
+            type="button"
+            lang="zh-CN"
+            className="mt-1 min-h-11 text-left text-base text-gray-500"
+            aria-label={`${t("action.copyOriginalName", lang)}: ${v.name.zh}`}
+            onClick={() => {
+              setActionError(undefined);
+              setPopup({ type: "name", value: v.name.zh! });
+            }}
+          >
+            {v.name.zh}
+          </button>
         )}
-        {showJa && nameJa && (
-          <div className="text-base text-gray-500 mt-1 text-left">{nameJa}</div>
-        )}
-        {showKo && nameKo && (
-          <div className="text-base text-gray-500 mt-1 text-left">{nameKo}</div>
-        )}
+        <p className="mt-2 text-sm">
+          <OpeningStatus hours={v.hours} now={now} locale={lang} />
+        </p>
         {/* 距离与地址 */}
         <div className="flex items-center gap-2 mt-3 text-left">
           {typeof distanceKm === "number" && (
             <span className="text-sm text-inkblack font-medium">
-              {distanceKm.toFixed(1)} km
+              {formatDistance(distanceKm, lang)}
             </span>
           )}
-          <span
-            className="text-sm text-gray-700 truncate cursor-pointer"
-            style={{ maxWidth: "70vw" }}
+          <button
+            type="button"
+            className="min-h-11 text-left text-sm text-gray-700 break-words"
             title={v.address}
-            onClick={() => setPopup({ type: "address", value: v.address })}
+            lang={v.address ? "zh-CN" : lang}
+            disabled={!v.address}
+            onClick={() => {
+              setActionError(undefined);
+              setPopup({ type: "address", value: v.address });
+            }}
           >
-            {v.address}
-          </span>
+            {v.address || t("venue.addressMissing", lang)}
+          </button>
         </div>
       </div>
 
@@ -284,19 +215,32 @@ export default function VenueDetail({
             className="bg-white rounded-lg shadow-lg p-6 min-w-[260px] max-w-[90vw]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 break-words text-gray-900 text-base">
+            <div
+              className="mb-4 break-words text-gray-900 text-base"
+              lang="zh-CN"
+            >
               {popup.value}
             </div>
             <button
-              className="w-full py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition"
+              className="min-h-11 w-full py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition"
               onClick={async () => {
-                await navigator.clipboard.writeText(popup.value);
-                setPopup(null);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
+                try {
+                  await navigator.clipboard.writeText(popup.value);
+                  setPopup(null);
+                  setCopied(true);
+                  setActionError(undefined);
+                  setTimeout(() => setCopied(false), 1500);
+                } catch {
+                  setActionError("action.copyError");
+                }
               }}
             >
-              复制{popup.type === "name" ? "店名" : "地址"}
+              {t(
+                popup.type === "name"
+                  ? "action.copyOriginalName"
+                  : "action.copy",
+                lang,
+              )}
             </button>
           </div>
         </div>
@@ -304,25 +248,50 @@ export default function VenueDetail({
       {/* 复制成功提示 */}
       {copied && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 rounded shadow z-50 text-sm">
-          已复制
+          {t("action.copied", lang)}
         </div>
       )}
 
-      {/* Opening hours 简单展示 */}
-      {Array.isArray(v.hours?.default) && v.hours.default.length > 0 && (
-        <section className="px-6 mt-6">
-          <h2 className="font-semibold mb-2 text-inkblack text-left">
-            Opening hours
-          </h2>
-          <ul className="text-sm text-gray-700 space-y-1">
-            {v.hours.default.map(([day, open, close], index: number) => (
-              <li key={index}>
-                <span className="inline-block w-16">{day || "未知"}</span>
-                {open && close ? `${open} – ${close}` : "Closed"}
+      <section className="px-6 mt-6">
+        <h2 className="mb-2 text-left font-semibold text-inkblack">
+          {t("hours.title", lang)}
+        </h2>
+        {intervals ? (
+          <ul className="space-y-2 text-sm text-gray-700">
+            {WEEKDAYS.map((day, index) => (
+              <li key={day} className="flex gap-3">
+                <span className="w-16 shrink-0">
+                  {new Intl.DateTimeFormat(lang, {
+                    weekday: "short",
+                    timeZone: "UTC",
+                  }).format(new Date(Date.UTC(2026, 9, 5 + index)))}
+                </span>
+                <span>
+                  {intervals
+                    .filter((interval) => interval[0] === day)
+                    .map(([, start, end]) => formatHours(start, end, lang))
+                    .join(" / ") || t("hours.dayOff", lang)}
+                </span>
               </li>
             ))}
           </ul>
-        </section>
+        ) : (
+          <p className="text-sm text-gray-600">{t("hours.unknown", lang)}</p>
+        )}
+      </section>
+      {actionError && (
+        <div
+          className="fixed bottom-6 left-4 right-4 z-[60] flex items-center justify-between gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-800 shadow-lg"
+          role="alert"
+        >
+          <span>{t(actionError, lang)}</span>
+          <button
+            className="min-h-11 shrink-0 px-2 font-semibold"
+            onClick={() => setActionError(undefined)}
+          >
+            {t("action.close", lang)}
+          </button>
+        </div>
       )}
 
       {/* 联系方式图标区 */}
@@ -332,6 +301,7 @@ export default function VenueDetail({
             <a
               key={c.key}
               href={c.url}
+              aria-label={t(`contact.${c.key}`, lang)}
               target={c.key === "tel" ? undefined : "_blank"}
               rel="noopener noreferrer"
               className="rounded-full bg-gray-100 p-3 hover:bg-gray-200 transition"
@@ -342,67 +312,26 @@ export default function VenueDetail({
         </div>
       )}
 
-      {/* Serving */}
-      {Array.isArray(v.serving) && v.serving.length > 0 && (
-        <section className="mt-6 px-6">
-          <h2 className="font-semibold mb-2 text-inkblack text-left">
-            Serving
-          </h2>
-          <div className="grid grid-cols-3 gap-2">
-            {v.serving.map((tag: string) => (
-              <div
-                key={tag}
-                className="flex flex-col items-center justify-center p-2 rounded-lg bg-gray-50"
-              >
-                <span>
-                  {servingIcons[tag.toLowerCase()] || <FaCoffee size={24} />}
-                </span>
-                <span className="mt-1 text-xs text-center break-words">
-                  {tag}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Services */}
-      {Array.isArray(v.services) && v.services.length > 0 && (
-        <section className="mt-6 px-6">
-          <h2 className="font-semibold mb-2 text-inkblack text-left">
-            Services
-          </h2>
-          <div className="grid grid-cols-3 gap-2">
-            {v.services.map((tag: string) => (
-              <div
-                key={tag}
-                className="flex flex-col items-center justify-center p-2 rounded-lg bg-gray-50"
-              >
-                <span>
-                  {serviceIcons[tag.toLowerCase()] || <FaCoffee size={24} />}
-                </span>
-                <span className="mt-1 text-xs text-center break-words">
-                  {tag}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <div className="px-6">
+        <VenueFeatures venue={v} locale={lang} catalog={catalog} />
+      </div>
 
       {/* 底部按钮区：主题色保持一致 */}
-      <div className="fixed left-0 right-0 bottom-0 z-30 bg-white p-4 flex flex-col gap-3 border-t">
+      <div
+        className="sticky bottom-0 z-30 bg-white p-4 flex flex-col gap-3 border-t"
+        style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+      >
         <button
           className="w-full py-3 rounded-full bg-pinkaccent text-white font-bold text-lg shadow hover:bg-pink-600 active:bg-pink-700 transition"
           onClick={() => setNavOpen(true)}
         >
-          Navigate
+          {t("action.navigate", lang)}
         </button>
         <button
           className="w-full py-3 rounded-full border-2 border-pinkaccent text-pinkaccent font-bold text-lg hover:bg-pink-50 transition"
           onClick={handleShare}
         >
-          Share
+          {t("action.share", lang)}
         </button>
       </div>
 
@@ -416,7 +345,9 @@ export default function VenueDetail({
             className="bg-white rounded-lg shadow-lg p-6 min-w-[260px] max-w-[90vw]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 font-semibold text-lg">选择地图应用</div>
+            <div className="mb-4 font-semibold text-lg">
+              {t("action.chooseMap", lang)}
+            </div>
             <div className="flex flex-col gap-3">
               {mapOptions.map((opt) => (
                 <a
@@ -424,7 +355,7 @@ export default function VenueDetail({
                   href={opt.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-2 rounded bg-pinkaccent text-white text-center font-semibold hover:bg-pink-500 transition"
+                  className="min-h-11 w-full py-2 rounded bg-pinkaccent text-white text-center font-semibold hover:bg-pink-500 transition"
                   onClick={() => setNavOpen(false)}
                 >
                   {opt.name}

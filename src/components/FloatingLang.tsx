@@ -1,54 +1,27 @@
 "use client";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Globe } from "lucide-react";
-import { tapSpring, popupMotion } from "@/lib/motion";
-
-const langs = [
-  { code: "en", label: "EN" },
-  { code: "ko", label: "KO" },
-];
-
-export default function FloatingLang({
-  current = "en",
-  onChange,
-}: {
-  current?: string;
-  onChange?: (lang: string) => void;
-}) {
+import LanguagePicker from "./LanguagePicker";
+import { useLocale } from "@/hooks/useLocale";
+import { t } from "@/lib/i18n";
+export default function FloatingLang() {
   const [open, setOpen] = useState(false);
-
+  const locale = useLocale();
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            {...popupMotion}
-            className="mb-2 bg-white rounded-2xl shadow-card px-3 py-2 flex flex-col gap-1 border border-pinkcream"
-          >
-            {langs.map((l) => (
-              <button
-                key={l.code}
-                className={`px-3 py-1 rounded-xl text-sm font-medium transition-colors ${current === l.code ? "bg-pinkaccent text-white" : "text-inkblack hover:bg-mintice"}`}
-                onClick={() => {
-                  onChange?.(l.code);
-                  setOpen(false);
-                }}
-              >
-                {l.label}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <motion.button
-        className="w-12 h-12 rounded-full bg-pinkcream shadow-card flex items-center justify-center border-2 border-pinkaccent hover:bg-pinkaccent hover:text-white transition-colors"
-        whileTap={tapSpring}
-        aria-label="Change language"
-        onClick={() => setOpen((v) => !v)}
+      {open && (
+        <div className="mb-2 w-64 rounded-2xl border bg-white shadow-card">
+          <LanguagePicker />
+        </div>
+      )}
+      <button
+        className="grid h-12 w-12 place-items-center rounded-full border-2 border-pinkaccent bg-pinkcream shadow-card"
+        aria-label={t("language.title", locale)}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
       >
-        <Globe size={26} className="" />
-      </motion.button>
+        <Globe size={26} />
+      </button>
     </div>
   );
 }

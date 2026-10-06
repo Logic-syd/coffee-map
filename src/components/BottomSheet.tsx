@@ -1,128 +1,100 @@
-import { useRef, useEffect, useState } from "react";
-
+import { useRef, useEffect } from "react";
+import { useLocale } from "@/hooks/useLocale";
+import { t } from "@/lib/i18n";
 type Props = {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  label?: string;
 };
-
-export default function BottomSheet({ open, onClose, children }: Props) {
+export default function BottomSheet({ open, onClose, children, label }: Props) {
+  const locale = useLocale();
   const sheetRef = useRef<HTMLDivElement>(null);
-  const [show, setShow] = useState(open);
-  const [animate, setAnimate] = useState(false);
-  const [contentReady, setContentReady] = useState(false);
-  const contentRef = useRef(children);
-  const previousOpenRef = useRef(open);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Handle opening and closing
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const touchY = useRef<number | undefined>(undefined);
   useEffect(() => {
-    // Clear any existing timeouts
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
-    if (open) {
-      // Opening flow
-      setShow(true);
-
-      // Give time for content to render
-      timeoutRef.current = setTimeout(() => {
-        setContentReady(true);
-        // Start animation after content is ready
-        requestAnimationFrame(() => {
-          setAnimate(true);
-        });
-      }, 50);
-    } else if (show) {
-      // Closing flow
-      setAnimate(false);
-
-      // Wait for animation to end before hiding
-      timeoutRef.current = setTimeout(() => {
-        setShow(false);
-        setContentReady(false);
-      }, 500);
-    }
-
-    // Update refs
-    contentRef.current = children;
-    previousOpenRef.current = open;
-
-    // Cleanup function
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+    if (!open) return;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    sheetRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeRef.current();
+      if (event.key === "Tab" && sheetRef.current) {
+        const controls = Array.from(
+          sheetRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), a[href], input:not([disabled]), [tabindex="0"]',
+          ),
+        ).filter((node) => node.getClientRects().length > 0);
+        const first = controls[0],
+          last = controls[controls.length - 1];
+        if (!first) {
+          event.preventDefault();
+          return;
+        }
+        if (
+          event.shiftKey &&
+          (document.activeElement === first ||
+            document.activeElement === sheetRef.current)
+        ) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     };
-  }, [open, children, show]);
-
-  // Close on click outside
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    if (show) {
-      document.addEventListener("mousedown", handleClick);
-    }
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [show, onClose]);
-
-  // Basic swipe down to close
-  useEffect(() => {
-    let startY = 0;
-    let endY = 0;
-    function onTouchStart(e: TouchEvent) {
-      startY = e.touches[0].clientY;
-    }
-    function onTouchMove(e: TouchEvent) {
-      endY = e.touches[0].clientY;
-    }
-    function onTouchEnd() {
-      if (endY - startY > 60) onClose();
-    }
-    const node = sheetRef.current;
-    if (node) {
-      node.addEventListener("touchstart", onTouchStart);
-      node.addEventListener("touchmove", onTouchMove);
-      node.addEventListener("touchend", onTouchEnd);
-    }
+    document.addEventListener("keydown", onKey);
     return () => {
-      if (node) {
-        node.removeEventListener("touchstart", onTouchStart);
-        node.removeEventListener("touchmove", onTouchMove);
-        node.removeEventListener("touchend", onTouchEnd);
-      }
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKey);
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
+        previousFocus.focus();
     };
-  }, [show, onClose]);
-
-  if (!show) return null;
-
+  }, [open]);
+  if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div
-        className={`absolute inset-0 bg-black/40 transition-opacity duration-500 ${
-          animate ? "opacity-100" : "opacity-0"
-        } pointer-events-auto`}
+        className="absolute inset-0 bg-black/40"
         onClick={onClose}
+        aria-hidden="true"
       />
       <div
         ref={sheetRef}
-        className={`fixed inset-x-0 mx-auto bg-white rounded-t-2xl shadow-lg w-full max-w-md md:max-w-xl lg:max-w-2xl h-[calc(100vh-120px)] max-h-[95vh] overflow-hidden transition-transform duration-500 ease-out transform ${
-          animate ? "translate-y-0" : "translate-y-full"
-        } pointer-events-auto`}
-        style={{
-          touchAction: "pan-y",
-          willChange: "transform",
-          transformOrigin: "bottom",
-          top: "120px",
-        }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label || t("venue.unnamed", locale)}
+        tabIndex={-1}
+        className="relative flex h-[calc(100dvh-72px)] max-h-[95dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-lg outline-none"
       >
-        <div className="h-full overflow-y-auto overscroll-contain">
-          {contentReady ? children : null}
+        <button
+          className="flex min-h-11 shrink-0 items-center justify-center"
+          aria-label={t("action.close", locale)}
+          onClick={onClose}
+          onTouchStart={(event) => {
+            touchY.current = event.touches[0]?.clientY;
+          }}
+          onTouchEnd={(event) => {
+            if (
+              touchY.current !== undefined &&
+              (event.changedTouches[0]?.clientY ?? touchY.current) -
+                touchY.current >
+                60
+            )
+              onClose();
+            touchY.current = undefined;
+          }}
+          onTouchCancel={() => {
+            touchY.current = undefined;
+          }}
+        >
+          <span className="h-1 w-12 rounded-full bg-gray-300" />
+        </button>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {children}
         </div>
       </div>
     </div>

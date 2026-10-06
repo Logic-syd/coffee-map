@@ -1,3 +1,5 @@
+import { useLocale } from "@/hooks/useLocale";
+import { t } from "@/lib/i18n";
 import { useFavoritesStore } from "@/store/favorites";
 import { HeartIcon as HeartOutline } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolid } from "@heroicons/react/24/solid";
@@ -11,13 +13,18 @@ export default function FavoriteButton({
   size?: number;
   className?: string;
 }) {
+  const locale = useLocale();
   const isFavorite = useFavoritesStore((s) => s.isFavorite(venueId));
   const addFavorite = useFavoritesStore((s) => s.addFavorite);
   const removeFavorite = useFavoritesStore((s) => s.removeFavorite);
 
   return (
     <button
-      aria-label={isFavorite ? "取消收藏" : "收藏"}
+      aria-label={t(
+        isFavorite ? "action.removeFavorite" : "action.addFavorite",
+        locale,
+      )}
+      aria-pressed={isFavorite}
       onClick={(e) => {
         e.stopPropagation();
         if (isFavorite) {
@@ -26,7 +33,7 @@ export default function FavoriteButton({
           addFavorite(venueId);
         }
       }}
-      className={`p-1 rounded-full transition ${className}`}
+      className={`min-h-11 min-w-11 grid place-items-center shrink-0 p-1 rounded-full transition ${className}`}
     >
       {isFavorite ? (
         <HeartSolid
